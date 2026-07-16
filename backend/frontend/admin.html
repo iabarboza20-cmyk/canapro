@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<title>Panel de administración — CANAPROSUCRE</title>
+<style>
+  :root{
+    --verde-claro:#8fd14f;
+    --verde-medio:#6fa832;
+    --verde-oscuro:#4c7a1f;
+    --verde-header:#5c9128;
+    --azul:#12297a;
+    --amarillo:#f6d413;
+    --naranja:#f2a00c;
+    --texto-oscuro:#233d0c;
+    --gris:#9a9a9a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:linear-gradient(180deg,#a9e06a,#7fc23f);
+    min-height:100vh;
+    padding:16px;
+  }
+  .wrap{ max-width:920px; margin:0 auto; }
+
+  .topbar{
+    background:var(--verde-oscuro);
+    color:#fff;
+    padding:8px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+    border-radius:4px;
+    margin-bottom:12px;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .topbar .actions{ display:flex; gap:10px; }
+  .topbar a, .topbar button{
+    background:var(--amarillo);
+    color:var(--texto-oscuro);
+    border:none;
+    padding:5px 10px;
+    border-radius:4px;
+    font-weight:700;
+    font-size:11px;
+    text-transform:uppercase;
+    text-decoration:none;
+    cursor:pointer;
+  }
+  .topbar button.logout{ background:#a33; color:#fff; }
+
+  h1{
+    background:var(--verde-header);
+    color:#fff;
+    padding:14px 18px;
+    border-radius:6px 6px 0 0;
+    margin:0;
+    font-size:18px;
+    border:3px solid var(--verde-oscuro);
+    border-bottom:none;
+  }
+
+  .panel{
+    background:var(--verde-claro);
+    border:3px solid var(--verde-oscuro);
+    border-radius:0 0 6px 6px;
+    padding:16px;
+    margin-bottom:20px;
+  }
+
+  .search-row{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .search-row input{
+    flex:1; min-width:200px;
+    padding:9px 12px; border-radius:4px; border:2px solid var(--verde-oscuro); font-size:14px;
+  }
+  .btn{
+    background:var(--azul); color:#fff; border:none; padding:9px 16px;
+    border-radius:4px; font-weight:700; cursor:pointer; font-size:13px; text-transform:uppercase;
+  }
+  .btn:hover{ opacity:.9; }
+  .btn.secondary{ background:var(--verde-medio); }
+  .btn.danger{ background:#a33; }
+  .btn.small{ padding:5px 10px; font-size:11px; }
+
+  table{ width:100%; border-collapse:collapse; background:#fff; border-radius:4px; overflow:hidden; }
+  th, td{ padding:8px 10px; text-align:left; font-size:13px; border-bottom:1px solid #ddd; }
+  th{ background:var(--verde-medio); color:#fff; text-transform:uppercase; font-size:11px; }
+  tr:hover td{ background:#f7fbee; }
+  .estado-badge{
+    padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; color:#fff;
+  }
+  .estado-badge.activo{ background:var(--azul); }
+  .estado-badge.inactivo{ background:#a33; }
+
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0; background:rgba(0,0,0,.5);
+    align-items:center; justify-content:center; padding:16px; z-index:100;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background:#fff; border-radius:6px; padding:20px; width:100%; max-width:560px;
+    max-height:90vh; overflow-y:auto; border:3px solid var(--verde-oscuro);
+  }
+  .modal h2{ margin-top:0; font-size:16px; color:var(--texto-oscuro); }
+  .field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .field-grid.full{ grid-template-columns:1fr; }
+  .field-grid label{ font-size:11px; font-weight:700; text-transform:uppercase; color:var(--texto-oscuro); display:block; margin-bottom:3px; }
+  .field-grid input, .field-grid select{
+    width:100%; padding:8px 10px; border-radius:4px; border:2px solid var(--verde-oscuro); font-size:13px;
+  }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+
+  .benef-section{ margin-top:16px; border-top:2px solid #ddd; padding-top:12px; }
+  .benef-section h3{ font-size:13px; margin:0 0 8px; color:var(--texto-oscuro); }
+  .benef-row{
+    display:flex; gap:6px; align-items:center; margin-bottom:6px; font-size:12px;
+    background:#f5f5f5; padding:6px 8px; border-radius:4px;
+  }
+  .benef-row span{ flex:1; }
+  .msg{ padding:10px; border-radius:4px; margin-bottom:12px; font-weight:600; font-size:13px; display:none; }
+  .msg.error{ background:#f3d0d0; color:#7a1414; }
+  .msg.ok{ background:#d6f0c2; color:var(--texto-oscuro); }
+
+  @media (max-width:600px){
+    .field-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div id="userInfo"></div>
+    <div class="actions">
+      <a href="/">Ir al buscador</a>
+      <button class="logout" id="logoutBtn">Salir</button>
+    </div>
+  </div>
+
+  <h1>Panel de administración — Asociados</h1>
+  <div class="panel">
+    <div class="msg" id="globalMsg"></div>
+
+    <div class="search-row">
+      <input type="text" id="searchInput" placeholder="Buscar por cédula o nombre...">
+      <button class="btn secondary" id="searchBtn">Buscar</button>
+      <button class="btn" id="newBtn">+ Nuevo asociado</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Cédula</th><th>Nombre</th><th>Municipio</th><th>Estado</th><th>Acciones</th></tr>
+      </thead>
+      <tbody id="tablaBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal editar/crear asociado -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Nuevo asociado</h2>
+    <div class="msg" id="modalMsg"></div>
+    <form id="asociadoForm">
+      <div class="field-grid">
+        <div><label>Cédula</label><input type="text" id="f-cedula" required></div>
+        <div><label>Nombre</label><input type="text" id="f-nombre" required></div>
+        <div><label>Teléfono</label><input type="text" id="f-telefono"></div>
+        <div><label>Email</label><input type="text" id="f-email"></div>
+        <div><label>Municipio residencia</label><input type="text" id="f-municipio"></div>
+        <div>
+          <label>Estado</label>
+          <select id="f-estado">
+            <option value="ACTIVO">ACTIVO</option>
+            <option value="INACTIVO">INACTIVO</option>
+          </select>
+        </div>
+        <div><label>Municipio de trabajo</label><input type="text" id="f-municipio_trabajo"></div>
+        <div><label>Institución</label><input type="text" id="f-institucion"></div>
+        <div><label>Cargo</label><input type="text" id="f-cargo"></div>
+        <div><label>Edad</label><input type="text" id="f-edad"></div>
+        <div>
+          <label>Sexo</label>
+          <select id="f-sexo">
+            <option value="">Sin dato</option>
+            <option value="F">F</option>
+            <option value="M">M</option>
+          </select>
+        </div>
+        <div><label>Dirección</label><input type="text" id="f-direccion"></div>
+      </div>
+
+      <div class="benef-section" id="benefSection">
+        <h3>Beneficiarios</h3>
+        <div id="benefList"></div>
+        <div class="field-grid">
+          <div><label>Parentesco</label><input type="text" id="nb-parentesco" placeholder="CONYUGE, BENEFICIARIO 2..."></div>
+          <div><label>Nombre</label><input type="text" id="nb-nombre"></div>
+          <div><label>Documento</label><input type="text" id="nb-documento"></div>
+          <div style="display:flex;align-items:flex-end;">
+            <button type="button" class="btn small secondary" id="addBenefBtn" style="width:100%;">Agregar beneficiario</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="cancelBtn">Cancelar</button>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const API_BASE = "";
+let cedulaEditando = null; // null = creando nuevo
+
+// --- Sesión ---
+async function cargarSesion(){
+  try{
+    const res = await fetch(`${API_BASE}/api/me`, { credentials: "same-origin" });
+    if(!res.ok){ window.location.href = "/login"; return; }
+    const data = await res.json();
+    if(data.rol !== "admin"){ window.location.href = "/"; return; }
+    document.getElementById("userInfo").textContent = `${data.username} (Administrador)`;
+  }catch(err){ window.location.href = "/login"; }
+}
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "same-origin" });
+  window.location.href = "/login";
+});
+cargarSesion();
+
+// --- Listado ---
+async function cargarLista(q = ""){
+  const url = q ? `${API_BASE}/api/admin/asociados?q=${encodeURIComponent(q)}` : `${API_BASE}/api/admin/asociados`;
+  const res = await fetch(url, { credentials: "same-origin" });
+  if(res.status === 401 || res.status === 403){ window.location.href = "/login"; return; }
+  const rows = await res.json();
+  const tbody = document.getElementById("tablaBody");
+  tbody.innerHTML = "";
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#999;">Sin resultados</td></tr>`;
+    return;
+  }
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    const badgeClass = r.estado === "ACTIVO" ? "activo" : "inactivo";
+    tr.innerHTML = `
+      <td>${r.cedula}</td>
+      <td>${r.nombre}</td>
+      <td>${r.municipio || "-"}</td>
+      <td><span class="estado-badge ${badgeClass}">${r.estado || "SIN DATO"}</span></td>
+      <td>
+        <button class="btn small secondary" onclick="editarAsociado('${r.cedula}')">Editar</button>
+        <button class="btn small danger" onclick="eliminarAsociado('${r.cedula}')">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+cargarLista();
+
+document.getElementById("searchBtn").addEventListener("click", () => {
+  cargarLista(document.getElementById("searchInput").value.trim());
+});
+document.getElementById("searchInput").addEventListener("keydown", e => {
+  if(e.key === "Enter") cargarLista(e.target.value.trim());
+});
+
+function showGlobalMsg(text, type){
+  const el = document.getElementById("globalMsg");
+  el.textContent = text;
+  el.className = `msg ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 3500);
+}
+
+// --- Eliminar ---
+async function eliminarAsociado(cedula){
+  if(!confirm(`¿Eliminar al asociado ${cedula}? Esto también borra sus beneficiarios.`)) return;
+  const res = await fetch(`${API_BASE}/api/admin/asociados/${cedula}`, {
+    method: "DELETE", credentials: "same-origin",
+  });
+  if(res.ok){
+    showGlobalMsg("Asociado eliminado.", "ok");
+    cargarLista(document.getElementById("searchInput").value.trim());
+  } else {
+    showGlobalMsg("No se pudo eliminar.", "error");
+  }
+}
+
+// --- Modal crear/editar ---
+const overlay = document.getElementById("modalOverlay");
+const form = document.getElementById("asociadoForm");
+const FIELDS = ["cedula","nombre","telefono","email","municipio","estado","municipio_trabajo",
+                "institucion","cargo","edad","sexo","direccion"];
+
+function abrirModal(){ overlay.classList.add("open"); }
+function cerrarModal(){ overlay.classList.remove("open"); form.reset(); document.getElementById("benefList").innerHTML=""; }
+
+document.getElementById("newBtn").addEventListener("click", () => {
+  cedulaEditando = null;
+  document.getElementById("modalTitle").textContent = "Nuevo asociado";
+  form.reset();
+  document.getElementById("f-cedula").disabled = false;
+  document.getElementById("benefSection").style.display = "none"; // solo al editar (necesita cedula ya creada)
+  abrirModal();
+});
+document.getElementById("cancelBtn").addEventListener("click", cerrarModal);
+
+async function editarAsociado(cedula){
+  const res = await fetch(`${API_BASE}/api/asociado/${cedula}`, { credentials: "same-origin" });
+  if(!res.ok){ showGlobalMsg("No se pudo cargar el asociado.", "error"); return; }
+  const data = await res.json();
+  cedulaEditando = cedula;
+
+  document.getElementById("modalTitle").textContent = `Editar: ${data.asociado.nombre}`;
+  FIELDS.forEach(f => {
+    const el = document.getElementById(`f-${f}`);
+    if(el) el.value = data.asociado[f] || (f === "estado" ? "ACTIVO" : "");
+  });
+  document.getElementById("f-cedula").disabled = true;
+
+  document.getElementById("benefSection").style.display = "block";
+  renderBenefList(data.beneficiarios);
+  abrirModal();
+}
+
+function renderBenefList(beneficiarios){
+  const list = document.getElementById("benefList");
+  list.innerHTML = "";
+  beneficiarios.forEach(b => {
+    const row = document.createElement("div");
+    row.className = "benef-row";
+    row.innerHTML = `
+      <span><strong>${b.parentesco}</strong> — ${b.nombre} (${b.documento || "sin documento"})</span>
+      <button type="button" class="btn small danger" onclick="eliminarBeneficiario(${b.id})">Eliminar</button>
+    `;
+    list.appendChild(row);
+  });
+}
+
+document.getElementById("addBenefBtn").addEventListener("click", async () => {
+  if(!cedulaEditando){
+    showModalMsg("Primero guarda el asociado antes de agregar beneficiarios.", "error");
+    return;
+  }
+  const parentesco = document.getElementById("nb-parentesco").value.trim();
+  const nombre = document.getElementById("nb-nombre").value.trim();
+  const documento = document.getElementById("nb-documento").value.trim();
+  if(!parentesco || !nombre){
+    showModalMsg("Parentesco y nombre del beneficiario son obligatorios.", "error");
+    return;
+  }
+  const res = await fetch(`${API_BASE}/api/admin/asociados/${cedulaEditando}/beneficiarios`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ parentesco, nombre, documento }),
+  });
+  if(res.ok){
+    document.getElementById("nb-parentesco").value = "";
+    document.getElementById("nb-nombre").value = "";
+    document.getElementById("nb-documento").value = "";
+    const detalle = await fetch(`${API_BASE}/api/asociado/${cedulaEditando}`, { credentials: "same-origin" }).then(r => r.json());
+    renderBenefList(detalle.beneficiarios);
+  } else {
+    showModalMsg("No se pudo agregar el beneficiario.", "error");
+  }
+});
+
+async function eliminarBeneficiario(id){
+  if(!confirm("¿Eliminar este beneficiario?")) return;
+  const res = await fetch(`${API_BASE}/api/admin/beneficiarios/${id}`, {
+    method: "DELETE", credentials: "same-origin",
+  });
+  if(res.ok){
+    const detalle = await fetch(`${API_BASE}/api/asociado/${cedulaEditando}`, { credentials: "same-origin" }).then(r => r.json());
+    renderBenefList(detalle.beneficiarios);
+  }
+}
+
+function showModalMsg(text, type){
+  const el = document.getElementById("modalMsg");
+  el.textContent = text;
+  el.className = `msg ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 3500);
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const payload = {};
+  FIELDS.forEach(f => { payload[f] = document.getElementById(`f-${f}`).value.trim(); });
+
+  const esNuevo = cedulaEditando === null;
+  const url = esNuevo
+    ? `${API_BASE}/api/admin/asociados`
+    : `${API_BASE}/api/admin/asociados/${cedulaEditando}`;
+  const method = esNuevo ? "POST" : "PUT";
+
+  const res = await fetch(url, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+
+  if(!res.ok){
+    showModalMsg(data.error || "No se pudo guardar.", "error");
+    return;
+  }
+
+  showGlobalMsg(esNuevo ? "Asociado creado correctamente." : "Cambios guardados.", "ok");
+  cerrarModal();
+  cargarLista(document.getElementById("searchInput").value.trim());
+});
+</script>
+</body>
+</html>
