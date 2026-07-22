@@ -46,15 +46,73 @@ Abre `http://localhost:5000` en el navegador y busca por cédula (prueba con
 
 ## Actualizar los datos
 
-Cuando tengas una versión nueva del Excel:
+Hay dos formas distintas, según el caso:
+
+**⚠️ `build_db.py` borra TODO y reconstruye desde cero** (asociados y
+beneficiarios, aunque nunca toca `usuarios`). Solo se usa para la carga
+inicial o si realmente quieres reemplazar toda la base:
 
 ```bash
 cd backend
-python3 build_db.py "ruta/al/nuevo_excel.xlsx"
+python3 build_db.py "ruta/al/excel_completo.xlsx"
 ```
 
-Esto regenera `canaprosucre.db` desde cero con los datos más recientes de la
-hoja "DATOS".
+**`importar_asociados_activos.py` no borra nada** — agrega asociados nuevos
+y actualiza los que ya existen sin perder datos que no vengan en ese Excel
+(fotos, beneficiarios ya cargados, etc.). Úsalo para cargas incrementales:
+
+```bash
+cd backend
+python3 importar_asociados_activos.py "ruta/al/excel_nuevo.xlsx"
+```
+
+Este script espera la hoja "Asociados Activos" con columnas: DOCUMENTO,
+ASOCIADO, EDAD, DIRECCION RESIDENCIA, CORREO ELECTRONICO, TELEFONO CELULAR,
+MUNICIPIO DE TRABAJO, INST EDUC, CARGO, CONYUGE + beneficiarios, ESTADO,
+SEXO. Si cambia el formato del Excel, hay que ajustar los nombres de
+columna dentro del script.
+
+## Fotos de perfil
+
+Desde el panel admin (`/admin`), al editar un asociado puedes subir su foto
+(JPG/PNG/WEBP, máximo 5MB). Se guarda en `backend/uploads/fotos/` y la URL
+queda en el campo `foto_url` de la tabla `asociados`. El buscador
+(`/`) la muestra en un círculo arriba de los datos; si no hay foto, se ve un
+ícono genérico de silueta.
+
+**⚠️ Importante en Render (plan gratis):** el disco de Render es
+*efímero* — cada vez que el servicio se reinicia o se redepliega, se
+pierden los archivos que no estén en el repositorio de GitHub (o sea, las
+fotos subidas después del último deploy desaparecen). Para que las fotos
+persistan de verdad en producción, hay 2 opciones:
+
+1. **Render Disks** (plan pago, ~$1/GB/mes): un disco persistente que sí
+   sobrevive a los reinicios.
+2. **Guardarlas en Supabase Storage** en vez de en el disco local (gratis,
+   y ya usas Supabase para la base de datos si completaste esa migración).
+   Si quieres, puedo ayudarte a cambiar el endpoint de subida para que
+   suba a Supabase Storage en vez de al disco de Render.
+
+Mientras pruebes todo en tu computador (local), esto no es un problema —
+las fotos quedan guardadas normalmente en `backend/uploads/fotos/`.
+
+## Estado de la migración a Supabase (pausada)
+
+Empezamos a migrar de SQLite a Supabase/Postgres pero la dejamos en pausa.
+Lo que quedó listo:
+
+- `db.py` funciona en **ambos modos**: si defines la variable de entorno
+  `DATABASE_URL`, se conecta a Postgres/Supabase; si no la defines (como
+  ahora), usa el archivo local `canaprosucre.db` con SQLite. No necesitas
+  hacer nada para seguir en modo local.
+- `migrate_to_supabase.py` está escrito pero **no probado contra un
+  Supabase real** — cuando quieras retomarlo, avísame y lo probamos juntos
+  paso a paso antes de usarlo con datos de verdad.
+
+**Nunca compartas la "Secret key" (o "service_role key") de Supabase en un
+chat o mensaje** — esa clave da acceso total a la base de datos. Si ya
+compartiste una antes, entra a tu proyecto de Supabase → Settings → API y
+regenérala.
 
 ## Publicarla en internet (gratis)
 
