@@ -1,521 +1,120 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full bg-slate-50">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="assets/logo.png">
-<title>Casa Nacional del Profesor CANAPROSUCRE</title>
-<style>
-  :root{
-    --verde-claro:#8fd14f;
-    --verde-medio:#6fa832;
-    --verde-oscuro:#4c7a1f;
-    --verde-header:#5c9128;
-    --azul:#12297a;
-    --amarillo:#f6d413;
-    --naranja:#f2a00c;
-    --crema:#fbf6e3;
-    --texto-oscuro:#233d0c;
-    --gris-texto:#9a9a9a;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    font-family:'Segoe UI', Arial, sans-serif;
-    background:linear-gradient(180deg,#a9e06a,#7fc23f);
-    min-height:100vh;
-    padding:24px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-  }
-  .card{
-    width:100%;
-    max-width:760px;
-    background:var(--verde-claro);
-    border:4px solid var(--verde-oscuro);
-    border-radius:6px;
-    overflow:hidden;
-    box-shadow:0 8px 24px rgba(0,0,0,.25);
-  }
-  .header{
-    background:var(--verde-header);
-    color:#fff;
-    padding:14px 18px;
-    display:flex;
-    align-items:center;
-    gap:14px;
-    border-bottom:3px solid var(--verde-oscuro);
-  }
-  .header .logo{
-    width:52px;height:52px;border-radius:50%;
-    background:#fff;
-    display:flex;align-items:center;justify-content:center;
-    border:3px solid var(--amarillo);
-    flex-shrink:0;
-    overflow:hidden;
-  }
-  .header .logo img{
-    width:100%;
-    height:100%;
-    object-fit:contain;
-  }
-  .header h1{
-    margin:0;
-    font-size:19px;
-    letter-spacing:.5px;
-    text-transform:uppercase;
-  }
-  .search-bar{
-    background:var(--azul);
-    padding:14px 18px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-  }
-  .search-bar input{
-    font-size:18px;
-    font-weight:700;
-    text-align:center;
-    padding:8px 14px;
-    border-radius:4px;
-    border:none;
-    width:220px;
-  }
-  .search-bar button{
-    background:var(--amarillo);
-    border:none;
-    font-weight:800;
-    padding:9px 18px;
-    border-radius:4px;
-    cursor:pointer;
-    color:var(--texto-oscuro);
-    letter-spacing:.5px;
-  }
-  .search-bar button:hover{ background:#ffe14d; }
-  .body{ padding:16px 18px 22px; }
-  .msg{
-    text-align:center;
-    padding:14px;
-    font-weight:700;
-    color:#7a1414;
-    display:none;
-  }
-  .field-row{
-    display:flex;
-    gap:8px;
-    margin-bottom:8px;
-    align-items:stretch;
-  }
-  .tag{
-    background:var(--verde-medio);
-    color:#fff;
-    font-weight:700;
-    font-size:11px;
-    padding:9px 10px;
-    border-radius:4px;
-    display:flex;
-    align-items:center;
-    white-space:nowrap;
-    text-transform:uppercase;
-    letter-spacing:.2px;
-    border:2px solid var(--verde-oscuro);
-  }
-  .value{
-    background:#fff;
-    border:2px solid var(--verde-oscuro);
-    border-radius:4px;
-    padding:9px 10px;
-    flex:1;
-    font-weight:600;
-    color:var(--texto-oscuro);
-    display:flex;
-    align-items:center;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    font-size:14px;
-    min-width:0;
-  }
-  .value.sin-datos{
-    color:var(--gris-texto);
-    font-style:italic;
-    font-weight:500;
-  }
-  .value.amarillo{ background:var(--amarillo); }
-  .value.small{ flex:0 0 auto; min-width:70px; justify-content:center; }
-  .value.estado-activo{ background:var(--azul); color:#fff; font-weight:800; justify-content:center; flex:0 0 auto; min-width:90px;}
-  .value.estado-inactivo{ background:#a33; color:#fff; font-weight:800; justify-content:center; flex:0 0 auto; min-width:90px;}
-  .value.docente-bar{
-    background:var(--azul); color:#fff; font-weight:800; justify-content:center;
-    flex:0 0 auto; padding:9px 20px; text-transform:uppercase;
-  }
-  .benef-title{
-    background:var(--crema);
-    text-align:center;
-    font-weight:800;
-    font-size:17px;
-    padding:8px;
-    margin:16px 0 10px;
-    border-radius:4px;
-    color:var(--texto-oscuro);
-    border:2px solid var(--verde-oscuro);
-  }
-  .benef-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-  .benef-card{
-    background:#fff;
-    border:2px solid var(--verde-oscuro);
-    border-radius:4px;
-    overflow:hidden;
-  }
-  .benef-card .parentesco{
-    background:var(--naranja);
-    color:#fff;
-    font-weight:800;
-    font-size:11px;
-    text-transform:uppercase;
-    padding:6px 8px;
-  }
-  .benef-card .nombre{
-    padding:8px;
-    font-weight:700;
-    font-size:13px;
-    font-style:italic;
-    color:var(--texto-oscuro);
-    min-height:18px;
-  }
-  .benef-card .doc{
-    background:var(--amarillo);
-    padding:6px 8px;
-    font-size:12px;
-    font-weight:700;
-    color:var(--texto-oscuro);
-  }
-  .benef-card .doc.sin-datos{
-    background:#eee;
-    color:var(--gris-texto);
-    font-style:italic;
-    font-weight:500;
-  }
-  .footer{
-    background:var(--verde-header);
-    color:#fff;
-    text-align:center;
-    padding:10px 12px 6px;
-    font-style:italic;
-    font-weight:600;
-    font-size:14px;
-    border-top:3px solid var(--verde-oscuro);
-  }
-  .footer .creditos{
-    font-style:normal;
-    font-weight:400;
-    font-size:11px;
-    opacity:.85;
-    margin-top:4px;
-  }
-  .topbar{
-    background:var(--verde-oscuro);
-    color:#fff;
-    padding:8px 16px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:12px;
-    max-width:760px;
-    width:100%;
-    margin:0 auto 10px;
-    border-radius:4px;
-  }
-  .topbar .user-info{ font-weight:600; }
-  .topbar .actions{ display:flex; gap:10px; }
-  .topbar a, .topbar button{
-    background:var(--amarillo);
-    color:var(--texto-oscuro);
-    border:none;
-    padding:5px 10px;
-    border-radius:4px;
-    font-weight:700;
-    font-size:11px;
-    text-transform:uppercase;
-    text-decoration:none;
-    cursor:pointer;
-  }
-  .topbar button.logout{ background:#a33; color:#fff; }
-
-  .foto-wrap{
-    display:flex;
-    justify-content:center;
-    margin-bottom:14px;
-  }
-  .foto-asociado{
-    width:96px;
-    height:96px;
-    border-radius:50%;
-    object-fit:cover;
-    border:3px solid var(--verde-oscuro);
-    background:#fff;
-  }
-
-  .hidden{ display:none; }
-
-  @media (max-width:520px){
-    body{ padding:10px; }
-    .card{ border-width:3px; border-radius:4px; }
-    .header{ padding:10px 12px; gap:10px; }
-    .header .logo{ width:40px; height:40px; border-width:2px; }
-    .header h1{ font-size:14px; line-height:1.25; }
-
-    .search-bar{ padding:12px; flex-wrap:wrap; }
-    .search-bar input{ width:100%; font-size:16px; }
-    .search-bar button{ width:100%; padding:11px; font-size:15px; }
-
-    .body{ padding:12px 10px 16px; }
-
-    .field-row{
-      flex-direction:column;
-      gap:4px;
-      margin-bottom:12px;
-    }
-    .tag{
-      font-size:10.5px;
-      padding:6px 10px;
-      border-radius:4px 4px 0 0;
-      border-bottom:none;
-    }
-    .value{
-      font-size:14px;
-      padding:10px;
-      border-radius:0 0 4px 4px;
-      width:100%;
-    }
-    .value.small{ width:100%; }
-    .value.estado-activo, .value.estado-inactivo{ width:100%; min-width:0; }
-    .value.docente-bar{ width:100%; padding:10px; font-size:14px; }
-
-    .benef-title{ font-size:15px; padding:7px; margin:14px 0 8px; }
-    .benef-grid{ grid-template-columns:1fr; gap:8px; }
-    .benef-card .nombre{ font-size:13px; }
-  }
-
-  @media (max-width:360px){
-    .header h1{ font-size:12px; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canaprosucre | Portal Institucional</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body>
-  <div class="topbar">
-    <div class="user-info" id="userInfo"></div>
-    <div class="actions">
-      <a href="/admin" id="adminLink" class="hidden">Panel admin</a>
-      <button class="logout" id="logoutBtn">Salir</button>
-    </div>
-  </div>
-  <div class="card">
-    <div class="header">
-      <div class="logo"><img src="assets/logo.png" alt="Logo CANAPROSUCRE"></div>
-      <h1>Casa Nacional del Profesor CANAPROSUCRE</h1>
-    </div>
+<body class="h-full flex flex-col text-slate-800 antialiased">
 
-    <div class="search-bar">
-      <input id="cedulaInput" type="text" placeholder="Número de cédula" inputmode="numeric">
-      <button id="buscarBtn">BUSCAR</button>
-    </div>
+    <!-- Header / Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <img src="assets/logo.png" alt="Canaprosucre Logo" class="h-12 w-auto object-contain" onerror="this.src='https://via.placeholder.com/150x50?text=CANAPROSUCRE'">
+                <div class="hidden md:block">
+                    <span class="text-xl font-bold text-emerald-800 tracking-tight block leading-none">CANAPROSUCRE</span>
+                    <span class="text-xs text-slate-500 font-medium">Plataforma de Servicios e Información</span>
+                </div>
+            </div>
 
-    <div class="body">
-      <div class="msg" id="msg"></div>
+            <nav class="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
+                <a href="index.html" class="text-emerald-700 font-semibold border-b-2 border-emerald-600 pb-1">Inicio</a>
+                <a href="#" class="hover:text-emerald-700 transition">Asociados</a>
+                <a href="#" class="hover:text-emerald-700 transition">Servicios</a>
+                <a href="#" class="hover:text-emerald-700 transition">Contacto</a>
+            </nav>
 
-      <div id="resultado" class="hidden">
-        <div class="foto-wrap">
-          <img id="v-foto" class="foto-asociado" src="" alt="Foto del asociado">
+            <div class="flex items-center space-x-3">
+                <a href="login.html" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition duration-200">
+                    Iniciar Sesión
+                </a>
+                <a href="admin.html" class="inline-flex items-center justify-center px-4 py-2.5 text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition duration-200">
+                    Administración
+                </a>
+            </div>
         </div>
+    </header>
 
-        <div class="field-row">
-          <div class="tag">Cédula</div>
-          <div class="value amarillo small" id="v-cedula"></div>
-          <div class="tag">Municipio de trabajo</div>
-          <div class="value amarillo" id="v-municipio-trabajo"></div>
+    <!-- Hero Section -->
+    <main class="flex-grow">
+        <section class="relative bg-gradient-to-br from-emerald-900 via-emerald-800 to-slate-900 text-white py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
+            <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+            <div class="max-w-5xl mx-auto text-center relative z-10">
+                <span class="inline-block px-3 py-1 bg-emerald-700/50 backdrop-blur-md text-emerald-200 text-xs font-semibold uppercase tracking-wider rounded-full mb-4 border border-emerald-500/30">
+                    Bienvenido a Canaprosucre
+                </span>
+                <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight mb-6 leading-tight">
+                    Gestión Integral y Transparente para Nuestros Asociados
+                </h1>
+                <p class="text-lg sm:text-xl text-emerald-100 max-w-3xl mx-auto font-light mb-10 leading-relaxed">
+                    Consulte sus estados de cuenta, novedades, certificados y trámites institucionales de manera rápida y segura desde un solo lugar.
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4">
+                    <a href="login.html" class="px-8 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl shadow-lg hover:shadow-emerald-500/20 transition duration-200">
+                        Ingresar a mi Cuenta
+                    </a>
+                    <a href="#servicios" class="px-8 py-3.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl backdrop-blur-md border border-white/20 transition duration-200">
+                        Conocer Más
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tarjetas de Acceso Rápido -->
+        <section id="servicios" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-12 relative z-20 mb-16">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Card 1 -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">Consulta de Asociados</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">Verifique el estado de aportes, historial activo e información del perfil personal.</p>
+                    <a href="#" class="text-emerald-700 font-semibold text-sm hover:underline inline-flex items-center gap-1">Ver detalles &rarr;</a>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">Trámites y Certificados</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">Descargue certificaciones asociadas, formatos requeridos e informes en tiempo real.</p>
+                    <a href="#" class="text-emerald-700 font-semibold text-sm hover:underline inline-flex items-center gap-1">Generar documento &rarr;</a>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700 mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-2">Módulo Administrativo</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-4">Acceso exclusivo para administradores: importación de bases de datos y gestión general.</p>
+                    <a href="admin.html" class="text-emerald-700 font-semibold text-sm hover:underline inline-flex items-center gap-1">Ir al panel &rarr;</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-8 border-t border-slate-800 text-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p>&copy; 2026 Canaprosucre. Todos los derechos reservados.</p>
+            <div class="flex space-x-6">
+                <a href="#" class="hover:text-white transition">Términos</a>
+                <a href="#" class="hover:text-white transition">Privacidad</a>
+                <a href="#" class="hover:text-white transition">Soporte</a>
+            </div>
         </div>
+    </footer>
 
-        <div class="field-row">
-          <div class="tag">Asociado</div>
-          <div class="value" id="v-nombre" style="flex:2"></div>
-          <div class="tag">Estado</div>
-          <div class="value" id="v-estado"></div>
-          <div class="tag">Sexo</div>
-          <div class="value small" id="v-sexo"></div>
-        </div>
-
-        <div class="field-row">
-          <div class="tag">Labora en la institución</div>
-          <div class="value" id="v-institucion" style="flex:2"></div>
-          <div class="tag">Edad</div>
-          <div class="value small" id="v-edad"></div>
-        </div>
-
-        <div class="field-row">
-          <div class="tag">Teléfono</div>
-          <div class="value" id="v-telefono"></div>
-          <div class="tag">Email</div>
-          <div class="value" id="v-email"></div>
-        </div>
-
-        <div class="field-row">
-          <div class="value docente-bar" id="v-cargo"></div>
-        </div>
-
-        <div class="benef-title">BENEFICIARIOS</div>
-        <div class="benef-grid" id="benefGrid"></div>
-      </div>
-    </div>
-
-    <div class="footer">
-      Canaprosucre 53 años de Solidaridad a sus asociados
-      <div class="creditos">Todos los derechos reservados a Iván Barboza</div>
-    </div>
-  </div>
-
-<script>
-const API_BASE = ""; // mismo origen; cambia si el backend está en otro dominio
-const SIN_DATOS = "Sin datos";
-
-// --- Sesión / topbar ---
-async function cargarSesion(){
-  try{
-    const res = await fetch(`${API_BASE}/api/me`, { credentials: "same-origin" });
-    if(!res.ok){
-      window.location.href = "/login";
-      return;
-    }
-    const data = await res.json();
-    document.getElementById("userInfo").textContent =
-      `${data.username} (${data.rol === "admin" ? "Administrador" : "Consulta"})`;
-    if(data.rol === "admin"){
-      document.getElementById("adminLink").classList.remove("hidden");
-    }
-  }catch(err){
-    window.location.href = "/login";
-  }
-}
-
-document.getElementById("logoutBtn").addEventListener("click", async () => {
-  await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "same-origin" });
-  window.location.href = "/login";
-});
-
-cargarSesion();
-
-const input = document.getElementById("cedulaInput");
-const btn = document.getElementById("buscarBtn");
-const msg = document.getElementById("msg");
-const resultado = document.getElementById("resultado");
-
-async function buscar(){
-  const cedula = input.value.trim();
-  msg.style.display = "none";
-  resultado.classList.add("hidden");
-
-  if(!cedula){
-    showMsg("Escribe un número de cédula.");
-    return;
-  }
-
-  try{
-    const res = await fetch(`${API_BASE}/api/asociado/${encodeURIComponent(cedula)}`, {
-      credentials: "same-origin",
-    });
-    if(res.status === 401){
-      window.location.href = "/login";
-      return;
-    }
-    if(res.status === 404){
-      showMsg("No se encontró ningún asociado con esa cédula.");
-      return;
-    }
-    const data = await res.json();
-    render(data);
-  }catch(err){
-    showMsg("Error consultando el servidor. Intenta de nuevo.");
-  }
-}
-
-function showMsg(text){
-  msg.textContent = text;
-  msg.style.display = "block";
-}
-
-// Escribe un valor en el elemento; si viene vacío, muestra "Sin datos" en gris cursiva
-function setValue(id, value){
-  const el = document.getElementById(id);
-  if(value === null || value === undefined || value === ""){
-    el.textContent = SIN_DATOS;
-    el.classList.add("sin-datos");
-  } else {
-    el.textContent = value;
-    el.classList.remove("sin-datos");
-  }
-}
-
-function render(data){
-  const a = data.asociado;
-
-  const FOTO_PLACEHOLDER = "data:image/svg+xml;utf8," + encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-      <circle cx="48" cy="48" r="48" fill="#e0e0e0"/>
-      <circle cx="48" cy="38" r="18" fill="#b0b0b0"/>
-      <ellipse cx="48" cy="88" rx="30" ry="24" fill="#b0b0b0"/>
-    </svg>
-  `);
-  document.getElementById("v-foto").src = a.foto_url || FOTO_PLACEHOLDER;
-
-  setValue("v-cedula", a.cedula);
-  setValue("v-municipio-trabajo", a.municipio_trabajo);
-  setValue("v-nombre", a.nombre);
-  setValue("v-sexo", a.sexo);
-  setValue("v-institucion", a.institucion);
-  setValue("v-edad", a.edad ? `${a.edad} años` : null);
-  setValue("v-telefono", a.telefono);
-  setValue("v-email", a.email);
-  setValue("v-cargo", a.cargo);
-
-  const estadoEl = document.getElementById("v-estado");
-  if(a.estado){
-    estadoEl.textContent = a.estado;
-    estadoEl.className = "value " + (a.estado === "ACTIVO" ? "estado-activo" : "estado-inactivo");
-  } else {
-    estadoEl.textContent = SIN_DATOS;
-    estadoEl.className = "value sin-datos estado-inactivo";
-  }
-
-  const grid = document.getElementById("benefGrid");
-  grid.innerHTML = "";
-  if(data.beneficiarios.length === 0){
-    grid.innerHTML = "<p style='grid-column:1/-1;text-align:center;font-weight:600;color:#555;'>Sin beneficiarios registrados.</p>";
-  } else {
-    data.beneficiarios.forEach(b=>{
-      const card = document.createElement("div");
-      card.className = "benef-card";
-      const docHtml = b.documento
-        ? `<div class="doc">${b.documento}</div>`
-        : `<div class="doc sin-datos">${SIN_DATOS}</div>`;
-      card.innerHTML = `
-        <div class="parentesco">${b.parentesco}</div>
-        <div class="nombre">${b.nombre}</div>
-        ${docHtml}
-      `;
-      grid.appendChild(card);
-    });
-  }
-
-  resultado.classList.remove("hidden");
-}
-
-btn.addEventListener("click", buscar);
-input.addEventListener("keydown", e => { if(e.key === "Enter") buscar(); });
-</script>
 </body>
 </html>
