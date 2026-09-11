@@ -126,6 +126,45 @@
     box-shadow:inset 0 0 0 2px var(--amarillo);
   }
 
+  .deporte-tabs{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    margin-bottom:12px;
+    padding-bottom:2px;
+  }
+  .deporte-tabs button{
+    flex:0 0 auto;
+    background:#fff;
+    color:var(--verde-oscuro);
+    border:2px solid var(--verde-oscuro);
+    padding:8px 14px;
+    border-radius:20px;
+    font-weight:800;
+    font-size:12px;
+    letter-spacing:.3px;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  .deporte-tabs button.active{
+    background:var(--verde-oscuro);
+    color:#fff;
+  }
+  .deporte-tabs button.proximamente{
+    background:var(--crema);
+    color:var(--gris-texto);
+    border-color:#ddd;
+    cursor:default;
+    position:relative;
+  }
+  .deporte-tabs button.proximamente .badge{
+    display:block;
+    font-size:8.5px;
+    font-weight:700;
+    letter-spacing:.3px;
+    margin-top:1px;
+  }
+
   .panel-verde{
     background:#fff;
     border:3px solid var(--verde-oscuro);
@@ -268,7 +307,8 @@
   <div class="topbar">
     <div id="userInfo"></div>
     <div class="actions">
-      <a href="/">Ir al buscador</a>
+      <a href="/">Inicio</a>
+      <a href="/consulta">Ir al buscador</a>
       <a href="/admin/torneo" id="gestionarLink" class="hidden" style="display:none;">Gestionar torneo</a>
       <button class="logout" id="logoutBtn">Salir</button>
     </div>
@@ -277,6 +317,13 @@
   <div class="header-card">
     <h1>Torneo interno CANAPROSUCRE</h1>
     <div class="subtitulo">Posiciones, goleadores y estadísticas</div>
+  </div>
+
+  <div class="deporte-tabs">
+    <button class="active" id="deporteFutbol" type="button">⚽ Fútbol</button>
+    <button class="proximamente" type="button" disabled>🎯 Minitejo<span class="badge">Próximamente</span></button>
+    <button class="proximamente" type="button" disabled>🪨 Tejo<span class="badge">Próximamente</span></button>
+    <button class="proximamente" type="button" disabled>🥎 Softball<span class="badge">Próximamente</span></button>
   </div>
 
   <div id="sinCategorias" class="panel-verde" style="display:none;">
