@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<title>CANAPROSUCRE — Portal Institucional</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#f3faec', 100: '#e3f4d0', 200: '#c8e8a3', 300: '#a9e06a',
+            400: '#8fd14f', 500: '#6fa832', 600: '#5c9128', 700: '#4c7a1f',
+            800: '#3a5f18', 900: '#233d0c',
+          },
+          accent: { yellow: '#f6d413', orange: '#f2a00c', blue: '#12297a', cream: '#fbf6e3' },
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{font-family:'Inter',system-ui,sans-serif;}</style>
+</head>
+<body class="bg-brand-50 text-brand-900">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-brand-200 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <a href="/" class="flex items-center gap-3 shrink-0">
+        <img src="assets/logo.png" alt="Logo CANAPROSUCRE" class="w-10 h-10 rounded-full border-2 border-accent-yellow bg-white object-contain">
+        <span class="hidden sm:block font-extrabold text-brand-700 text-sm leading-tight">
+          CASA NACIONAL DEL<br>PROFESOR CANAPROSUCRE
+        </span>
+        <span class="sm:hidden font-extrabold text-brand-700 text-sm">CANAPROSUCRE</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-brand-800">
+        <a href="#servicios" class="hover:text-brand-600">Servicios</a>
+        <a href="#torneo" class="hover:text-brand-600">Torneo</a>
+        <a href="#contacto" class="hover:text-brand-600">Contacto</a>
+      </nav>
+      <a href="/login"
+        class="shrink-0 bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-bold uppercase tracking-wide px-4 py-2.5 rounded-lg transition-colors">
+        Iniciar sesión
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="bg-gradient-to-b from-brand-600 to-brand-500 text-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-24 text-center">
+      <span class="inline-block bg-accent-yellow text-brand-900 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full mb-5">
+        53 años de solidaridad con sus asociados
+      </span>
+      <h1 class="text-3xl sm:text-5xl font-extrabold leading-tight max-w-3xl mx-auto">
+        Bienvenido al portal de CANAPROSUCRE
+      </h1>
+      <p class="mt-4 text-brand-50/90 text-base sm:text-lg max-w-2xl mx-auto">
+        Consulta tu información como asociado, sigue el torneo interno y simula tu crédito,
+        todo en un mismo lugar.
+      </p>
+      <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+        <a href="/login"
+          class="w-full sm:w-auto bg-accent-yellow hover:bg-yellow-300 text-brand-900 font-extrabold uppercase tracking-wide text-sm px-6 py-3.5 rounded-lg transition-colors">
+          Consultar mi información
+        </a>
+        <a href="/torneo"
+          class="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/40 text-white font-extrabold uppercase tracking-wide text-sm px-6 py-3.5 rounded-lg transition-colors">
+          Ver torneo interno
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Servicios -->
+  <section id="servicios" class="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+    <div class="text-center mb-10">
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-brand-800">Nuestros servicios</h2>
+      <p class="text-brand-700/80 mt-2 text-sm sm:text-base">Todo lo que necesitas como asociado, en un solo portal.</p>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+      <!-- Consulta de asociados -->
+      <a href="/login" class="group block bg-white rounded-2xl border border-brand-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all p-6">
+        <div class="w-12 h-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center text-2xl mb-4">🔍</div>
+        <h3 class="font-bold text-brand-900 text-lg mb-1.5">Consulta de asociados</h3>
+        <p class="text-sm text-brand-700/80 leading-relaxed">
+          Busca tu información como asociado por número de cédula: datos personales,
+          estado y beneficiarios registrados.
+        </p>
+        <span class="inline-flex items-center gap-1 text-sm font-bold text-brand-600 mt-4 group-hover:gap-2 transition-all">
+          Ingresar a consultar →
+        </span>
+      </a>
+
+      <!-- Torneo -->
+      <a id="torneo" href="/torneo" class="group block bg-white rounded-2xl border border-brand-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all p-6">
+        <div class="w-12 h-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center text-2xl mb-4">⚽</div>
+        <h3 class="font-bold text-brand-900 text-lg mb-1.5">Torneo interno</h3>
+        <p class="text-sm text-brand-700/80 leading-relaxed">
+          Posiciones, goleadores y estadísticas del torneo de fútbol. Minitejo, tejo y
+          softball llegan próximamente.
+        </p>
+        <span class="inline-flex items-center gap-1 text-sm font-bold text-brand-600 mt-4 group-hover:gap-2 transition-all">
+          Ver el torneo →
+        </span>
+      </a>
+
+      <!-- Simulador de créditos -->
+      <a href="/simulador-creditos" class="group block bg-white rounded-2xl border border-brand-200 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all p-6">
+        <div class="w-12 h-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center text-2xl mb-4">💳</div>
+        <h3 class="font-bold text-brand-900 text-lg mb-1.5">Simulador de créditos</h3>
+        <p class="text-sm text-brand-700/80 leading-relaxed">
+          Calcula una estimación de tu cuota mensual según el monto, la tasa y el plazo
+          que elijas.
+        </p>
+        <span class="inline-flex items-center gap-1 text-sm font-bold text-brand-600 mt-4 group-hover:gap-2 transition-all">
+          Simular ahora →
+        </span>
+      </a>
+
+    </div>
+  </section>
+
+  <!-- Franja institucional -->
+  <section class="bg-brand-800 text-white">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 grid sm:grid-cols-3 gap-6 text-center">
+      <div>
+        <div class="text-3xl font-extrabold text-accent-yellow">53</div>
+        <div class="text-sm text-brand-100/90 mt-1">años de solidaridad</div>
+      </div>
+      <div>
+        <div class="text-3xl font-extrabold text-accent-yellow">+500</div>
+        <div class="text-sm text-brand-100/90 mt-1">asociados registrados</div>
+      </div>
+      <div>
+        <div class="text-3xl font-extrabold text-accent-yellow">100%</div>
+        <div class="text-sm text-brand-100/90 mt-1">cooperativa de maestros</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer id="contacto" class="bg-brand-900 text-brand-100/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <img src="assets/logo.png" alt="Logo CANAPROSUCRE" class="w-9 h-9 rounded-full bg-white object-contain">
+        <div class="text-sm">
+          <div class="font-bold text-white">Casa Nacional del Profesor CANAPROSUCRE</div>
+          <div class="text-xs italic">53 años de solidaridad a sus asociados</div>
+        </div>
+      </div>
+      <div class="text-xs text-brand-100/60">Todos los derechos reservados a Iván Barboza</div>
+    </div>
+  </footer>
+
+</body>
+</html>

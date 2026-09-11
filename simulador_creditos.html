@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<title>Simulador de créditos — CANAPROSUCRE</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#f3faec', 100: '#e3f4d0', 200: '#c8e8a3', 300: '#a9e06a',
+            400: '#8fd14f', 500: '#6fa832', 600: '#5c9128', 700: '#4c7a1f',
+            800: '#3a5f18', 900: '#233d0c',
+          },
+          accent: { yellow: '#f6d413', orange: '#f2a00c', blue: '#12297a', cream: '#fbf6e3' },
+        },
+      },
+    },
+  };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{font-family:'Inter',system-ui,sans-serif;}</style>
+</head>
+<body class="bg-brand-50 text-brand-900 min-h-screen flex flex-col">
+
+  <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-brand-200 shadow-sm">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <a href="/" class="flex items-center gap-3">
+        <img src="assets/logo.png" alt="Logo CANAPROSUCRE" class="w-9 h-9 rounded-full border-2 border-accent-yellow bg-white object-contain">
+        <span class="font-extrabold text-brand-700 text-sm">CANAPROSUCRE</span>
+      </a>
+      <a href="/" class="text-xs sm:text-sm font-bold text-brand-700 hover:text-brand-900">← Volver al inicio</a>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-4xl mx-auto w-full px-4 sm:px-6 py-10">
+    <div class="text-center mb-8">
+      <span class="inline-block bg-accent-yellow text-brand-900 text-xs font-extrabold uppercase tracking-wider px-3 py-1 rounded-full mb-3">
+        Herramienta de estimación
+      </span>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-brand-800">Simulador de créditos</h1>
+      <p class="text-brand-700/80 mt-2 text-sm sm:text-base max-w-xl mx-auto">
+        Calcula una estimación de tu cuota mensual. Ajusta el monto, la tasa y el plazo
+        para ver cómo cambia el resultado.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-6">
+
+      <!-- Formulario -->
+      <div class="bg-white rounded-2xl border border-brand-200 shadow-sm p-6">
+        <h2 class="font-bold text-brand-900 mb-4">Datos del crédito</h2>
+
+        <label class="block text-xs font-bold uppercase tracking-wide text-brand-900 mb-1">Monto del crédito (COP)</label>
+        <input type="number" id="monto" value="3000000" min="0" step="50000"
+          class="w-full rounded-lg border-2 border-brand-300 focus:border-brand-600 px-3 py-2.5 text-sm mb-4 focus:outline-none">
+
+        <label class="block text-xs font-bold uppercase tracking-wide text-brand-900 mb-1">Tasa de interés mensual (%)</label>
+        <input type="number" id="tasa" value="1.5" min="0" step="0.1"
+          class="w-full rounded-lg border-2 border-brand-300 focus:border-brand-600 px-3 py-2.5 text-sm mb-4 focus:outline-none">
+
+        <label class="block text-xs font-bold uppercase tracking-wide text-brand-900 mb-1">Plazo (meses)</label>
+        <input type="number" id="plazo" value="12" min="1" step="1"
+          class="w-full rounded-lg border-2 border-brand-300 focus:border-brand-600 px-3 py-2.5 text-sm mb-5 focus:outline-none">
+
+        <button id="calcularBtn" type="button"
+          class="w-full bg-brand-600 hover:bg-brand-700 text-white font-extrabold uppercase tracking-wide text-sm rounded-lg py-3 transition-colors">
+          Calcular cuota
+        </button>
+      </div>
+
+      <!-- Resultado -->
+      <div class="bg-brand-700 text-white rounded-2xl shadow-sm p-6 flex flex-col justify-center">
+        <div class="text-xs font-bold uppercase tracking-wide text-brand-100/80 mb-1">Cuota mensual estimada</div>
+        <div class="text-4xl font-extrabold text-accent-yellow mb-6" id="cuotaResultado">$ 0</div>
+
+        <div class="space-y-3 text-sm border-t border-white/20 pt-4">
+          <div class="flex justify-between">
+            <span class="text-brand-100/80">Total de intereses</span>
+            <span class="font-bold" id="interesesResultado">$ 0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-brand-100/80">Total a pagar</span>
+            <span class="font-bold" id="totalResultado">$ 0</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-brand-100/80">Número de cuotas</span>
+            <span class="font-bold" id="cuotasResultado">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de amortización -->
+    <div class="mt-6 bg-white rounded-2xl border border-brand-200 shadow-sm overflow-hidden">
+      <button id="toggleTabla" type="button"
+        class="w-full flex items-center justify-between px-6 py-4 font-bold text-brand-800 hover:bg-brand-50 transition-colors">
+        <span>Ver tabla de amortización</span>
+        <span id="toggleIcono">▼</span>
+      </button>
+      <div id="tablaWrap" class="hidden overflow-x-auto px-2 pb-4">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs uppercase text-brand-700/70 border-b border-brand-200">
+              <th class="px-3 py-2">Cuota</th>
+              <th class="px-3 py-2 text-right">Pago</th>
+              <th class="px-3 py-2 text-right">Interés</th>
+              <th class="px-3 py-2 text-right">Abono a capital</th>
+              <th class="px-3 py-2 text-right">Saldo</th>
+            </tr>
+          </thead>
+          <tbody id="tablaBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="mt-8 bg-accent-cream border border-accent-orange/40 rounded-xl px-5 py-4 text-sm text-brand-900/80">
+      <strong class="text-brand-900">Nota importante:</strong> esta calculadora es solo una herramienta de
+      estimación general (sistema de cuota fija). Los valores de tasa, plazo y monto son de ejemplo y
+      <strong>no representan necesariamente</strong> las tasas, plazos, requisitos o políticas reales de
+      crédito de CANAPROSUCRE. Para conocer las condiciones exactas de un crédito, comunícate directamente
+      con la cooperativa.
+    </div>
+  </main>
+
+  <footer class="bg-brand-900 text-brand-100/70 text-center text-xs py-5">
+    Casa Nacional del Profesor CANAPROSUCRE — Todos los derechos reservados a Iván Barboza
+  </footer>
+
+<script>
+function formatoCOP(valor){
+  return valor.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+}
+
+function calcular(){
+  const monto = parseFloat(document.getElementById("monto").value) || 0;
+  const tasaMensual = (parseFloat(document.getElementById("tasa").value) || 0) / 100;
+  const plazo = parseInt(document.getElementById("plazo").value) || 0;
+
+  const tablaBody = document.getElementById("tablaBody");
+  tablaBody.innerHTML = "";
+
+  if(monto <= 0 || plazo <= 0){
+    document.getElementById("cuotaResultado").textContent = "$ 0";
+    document.getElementById("interesesResultado").textContent = "$ 0";
+    document.getElementById("totalResultado").textContent = "$ 0";
+    document.getElementById("cuotasResultado").textContent = "0";
+    return;
+  }
+
+  let cuota;
+  if(tasaMensual === 0){
+    cuota = monto / plazo;
+  } else {
+    cuota = (monto * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -plazo));
+  }
+
+  let saldo = monto;
+  let totalIntereses = 0;
+
+  for(let i = 1; i <= plazo; i++){
+    const interes = saldo * tasaMensual;
+    let abonoCapital = cuota - interes;
+    if(i === plazo){
+      // Ajusta la última cuota para que el saldo cierre exactamente en cero
+      abonoCapital = saldo;
+    }
+    saldo = Math.max(saldo - abonoCapital, 0);
+    totalIntereses += interes;
+
+    const fila = document.createElement("tr");
+    fila.className = "border-b border-brand-100 " + (i % 2 === 0 ? "bg-brand-50" : "");
+    fila.innerHTML = `
+      <td class="px-3 py-2">${i}</td>
+      <td class="px-3 py-2 text-right">${formatoCOP(abonoCapital + interes)}</td>
+      <td class="px-3 py-2 text-right">${formatoCOP(interes)}</td>
+      <td class="px-3 py-2 text-right">${formatoCOP(abonoCapital)}</td>
+      <td class="px-3 py-2 text-right">${formatoCOP(saldo)}</td>
+    `;
+    tablaBody.appendChild(fila);
+  }
+
+  const total = monto + totalIntereses;
+
+  document.getElementById("cuotaResultado").textContent = formatoCOP(cuota);
+  document.getElementById("interesesResultado").textContent = formatoCOP(totalIntereses);
+  document.getElementById("totalResultado").textContent = formatoCOP(total);
+  document.getElementById("cuotasResultado").textContent = plazo;
+}
+
+document.getElementById("calcularBtn").addEventListener("click", calcular);
+["monto", "tasa", "plazo"].forEach(id => {
+  document.getElementById(id).addEventListener("keydown", e => { if(e.key === "Enter") calcular(); });
+});
+
+const toggleBtn = document.getElementById("toggleTabla");
+const tablaWrap = document.getElementById("tablaWrap");
+const toggleIcono = document.getElementById("toggleIcono");
+toggleBtn.addEventListener("click", () => {
+  const oculto = tablaWrap.classList.toggle("hidden");
+  toggleIcono.textContent = oculto ? "▼" : "▲";
+});
+
+calcular();
+</script>
+</body>
+</html>
