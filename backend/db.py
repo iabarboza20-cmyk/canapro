@@ -75,5 +75,10 @@ def get_conn():
 
     sq_conn = sqlite3.connect(SQLITE_PATH)
     sq_conn.row_factory = sqlite3.Row
+    # SQLite ignora "ON DELETE CASCADE" salvo que se active explícitamente
+    # por conexión (a diferencia de Postgres, que sí lo hace por defecto).
+    # Sin esto, borrar una categoría/equipo/partido dejaría huérfanos sus
+    # equipos/jugadores/partidos/goles/tarjetas relacionados.
+    sq_conn.execute("PRAGMA foreign_keys = ON")
     return _SQLiteConnWrapper(sq_conn)
 

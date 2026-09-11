@@ -106,6 +106,18 @@ def admin_page():
     return send_from_directory(FRONTEND_DIR, "admin.html")
 
 
+@app.route("/torneo")
+@login_required
+def torneo_page():
+    return send_from_directory(FRONTEND_DIR, "torneo.html")
+
+
+@app.route("/admin/torneo")
+@admin_required
+def admin_torneo_page():
+    return send_from_directory(FRONTEND_DIR, "admin_torneo.html")
+
+
 # ---------------------------------------------------------------------------
 # API de consulta (viewer y admin)
 # ---------------------------------------------------------------------------
@@ -535,6 +547,566 @@ def admin_eliminar_usuario(user_id):
             return jsonify({"error": "Debe quedar al menos un usuario admin"}), 400
 
     conn.execute("DELETE FROM usuarios WHERE id = %s", (user_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+# ---------------------------------------------------------------------------
+# Torneo interno — API pública (viewer y admin): tabla de posiciones,
+# goleadores y destacados por categoría
+# ---------------------------------------------------------------------------
+
+@app.route("/api/torneo/categorias")
+@login_required
+def torneo_categorias():
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, nombre, orden FROM categorias ORDER BY orden, nombre"
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+TABLA_SQL = """
+    WITH stats AS (
+        SELECT equipo_local_id AS equipo_id, goles_local AS gf, goles_visitante AS gc,
+               CASE WHEN goles_local > goles_visitante THEN 1 ELSE 0 END AS win,
+               CASE WHEN goles_local = goles_visitante THEN 1 ELSE 0 END AS draw,
+               CASE WHEN goles_local < goles_visitante THEN 1 ELSE 0 END AS loss
+        FROM partidos
+        WHERE categoria_id = %s AND goles_local IS NOT NULL AND goles_visitante IS NOT NULL
+        UNION ALL
+        SELECT equipo_visitante_id, goles_visitante, goles_local,
+               CASE WHEN goles_visitante > goles_local THEN 1 ELSE 0 END,
+               CASE WHEN goles_visitante = goles_local THEN 1 ELSE 0 END,
+               CASE WHEN goles_visitante < goles_local THEN 1 ELSE 0 END
+        FROM partidos
+        WHERE categoria_id = %s AND goles_local IS NOT NULL AND goles_visitante IS NOT NULL
+    )
+    SELECT e.id, e.nombre, e.escudo_url,
+           COUNT(s.equipo_id) AS pj,
+           COALESCE(SUM(s.win), 0) AS pg,
+           COALESCE(SUM(s.draw), 0) AS pe,
+           COALESCE(SUM(s.loss), 0) AS pp,
+           COALESCE(SUM(s.gf), 0) AS gf,
+           COALESCE(SUM(s.gc), 0) AS gc,
+           COALESCE(SUM(s.gf), 0) - COALESCE(SUM(s.gc), 0) AS dif,
+           COALESCE(SUM(s.win), 0) * 3 + COALESCE(SUM(s.draw), 0) AS pts
+    FROM equipos e
+    LEFT JOIN stats s ON s.equipo_id = e.id
+    WHERE e.categoria_id = %s
+    GROUP BY e.id, e.nombre, e.escudo_url
+    ORDER BY pts DESC, dif DESC, gf DESC, e.nombre ASC
+"""
+
+
+@app.route("/api/torneo/tabla/<int:categoria_id>")
+@login_required
+def torneo_tabla(categoria_id):
+    conn = get_conn()
+    rows = conn.execute(TABLA_SQL, (categoria_id, categoria_id, categoria_id)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/torneo/goleadores/<int:categoria_id>")
+@login_required
+def torneo_goleadores(categoria_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT j.id, j.nombre, e.nombre AS equipo_nombre, e.escudo_url,
+               COALESCE(SUM(g.cantidad), 0) AS goles
+        FROM jugadores j
+        JOIN equipos e ON e.id = j.equipo_id
+        LEFT JOIN goles g ON g.jugador_id = j.id
+        WHERE e.categoria_id = %s
+        GROUP BY j.id, j.nombre, e.nombre, e.escudo_url
+        HAVING COALESCE(SUM(g.cantidad), 0) > 0
+        ORDER BY goles DESC, j.nombre ASC
+        LIMIT 20
+    """, (categoria_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/torneo/destacados/<int:categoria_id>")
+@login_required
+def torneo_destacados(categoria_id):
+    conn = get_conn()
+
+    goleador = conn.execute("""
+        SELECT j.nombre, e.nombre AS equipo_nombre, SUM(g.cantidad) AS goles
+        FROM goles g
+        JOIN jugadores j ON j.id = g.jugador_id
+        JOIN equipos e ON e.id = j.equipo_id
+        WHERE e.categoria_id = %s
+        GROUP BY j.id, j.nombre, e.nombre
+        ORDER BY goles DESC, j.nombre ASC
+        LIMIT 1
+    """, (categoria_id,)).fetchone()
+
+    tabla = conn.execute("""
+        WITH stats AS (
+            SELECT equipo_local_id AS equipo_id, goles_local AS gf, goles_visitante AS gc
+            FROM partidos
+            WHERE categoria_id = %s AND goles_local IS NOT NULL AND goles_visitante IS NOT NULL
+            UNION ALL
+            SELECT equipo_visitante_id, goles_visitante, goles_local
+            FROM partidos
+            WHERE categoria_id = %s AND goles_local IS NOT NULL AND goles_visitante IS NOT NULL
+        )
+        SELECT e.id, e.nombre,
+               COUNT(s.equipo_id) AS pj,
+               COALESCE(SUM(s.gf), 0) AS gf,
+               COALESCE(SUM(s.gc), 0) AS gc
+        FROM equipos e
+        LEFT JOIN stats s ON s.equipo_id = e.id
+        WHERE e.categoria_id = %s
+        GROUP BY e.id, e.nombre
+    """, (categoria_id, categoria_id, categoria_id)).fetchall()
+
+    tarjetas_por_equipo = conn.execute("""
+        SELECT e.id, e.nombre, COALESCE(SUM(t.cantidad), 0) AS total
+        FROM equipos e
+        LEFT JOIN jugadores j ON j.equipo_id = e.id
+        LEFT JOIN tarjetas t ON t.jugador_id = j.id
+        WHERE e.categoria_id = %s
+        GROUP BY e.id, e.nombre
+    """, (categoria_id,)).fetchall()
+    conn.close()
+
+    jugados = [dict(r) for r in tabla if r["pj"] > 0]
+    ofensiva = max(jugados, key=lambda r: r["gf"]) if jugados else None
+    defensiva = min(jugados, key=lambda r: r["gc"]) if jugados else None
+    tarjetas_list = [dict(r) for r in tarjetas_por_equipo]
+    fair_play = min(tarjetas_list, key=lambda r: r["total"]) if tarjetas_list else None
+
+    return jsonify({
+        "goleador": dict(goleador) if goleador else None,
+        "ofensiva": {"nombre": ofensiva["nombre"], "goles_favor": ofensiva["gf"]} if ofensiva else None,
+        "defensiva": {"nombre": defensiva["nombre"], "goles_contra": defensiva["gc"]} if defensiva else None,
+        "fair_play": {"nombre": fair_play["nombre"], "tarjetas": fair_play["total"]} if fair_play else None,
+    })
+
+
+@app.route("/api/torneo/partidos/<int:categoria_id>")
+@login_required
+def torneo_partidos(categoria_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT p.id, p.jornada, p.fecha, p.goles_local, p.goles_visitante,
+               el.nombre AS local_nombre, el.escudo_url AS local_escudo,
+               ev.nombre AS visitante_nombre, ev.escudo_url AS visitante_escudo
+        FROM partidos p
+        JOIN equipos el ON el.id = p.equipo_local_id
+        JOIN equipos ev ON ev.id = p.equipo_visitante_id
+        WHERE p.categoria_id = %s
+        ORDER BY p.id DESC
+    """, (categoria_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+# ---------------------------------------------------------------------------
+# Torneo interno — API de administración (solo admin): CRUD de categorías,
+# equipos, jugadores, partidos, goles y tarjetas
+# ---------------------------------------------------------------------------
+
+@app.route("/api/admin/torneo/categorias", methods=["POST"])
+@admin_required
+def admin_crear_categoria():
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    orden = data.get("orden") or 0
+    if not nombre:
+        return jsonify({"error": "El nombre de la categoría es obligatorio"}), 400
+    conn = get_conn()
+    existente = conn.execute("SELECT id FROM categorias WHERE nombre = %s", (nombre,)).fetchone()
+    if existente:
+        conn.close()
+        return jsonify({"error": "Ya existe una categoría con ese nombre"}), 409
+    conn.execute("INSERT INTO categorias (nombre, orden) VALUES (%s, %s)", (nombre, orden))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/admin/torneo/categorias/<int:categoria_id>", methods=["PUT"])
+@admin_required
+def admin_editar_categoria(categoria_id):
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    orden = data.get("orden") or 0
+    if not nombre:
+        return jsonify({"error": "El nombre de la categoría es obligatorio"}), 400
+    conn = get_conn()
+    conn.execute(
+        "UPDATE categorias SET nombre = %s, orden = %s WHERE id = %s", (nombre, orden, categoria_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/categorias/<int:categoria_id>", methods=["DELETE"])
+@admin_required
+def admin_eliminar_categoria(categoria_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM categorias WHERE id = %s", (categoria_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/equipos", methods=["GET"])
+@admin_required
+def admin_listar_equipos():
+    categoria_id = request.args.get("categoria_id")
+    conn = get_conn()
+    if categoria_id:
+        rows = conn.execute(
+            "SELECT id, categoria_id, nombre, escudo_url FROM equipos "
+            "WHERE categoria_id = %s ORDER BY nombre", (categoria_id,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, categoria_id, nombre, escudo_url FROM equipos ORDER BY nombre"
+        ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/admin/torneo/equipos", methods=["POST"])
+@admin_required
+def admin_crear_equipo():
+    data = request.get_json(silent=True) or {}
+    categoria_id = data.get("categoria_id")
+    nombre = (data.get("nombre") or "").strip()
+    if not categoria_id or not nombre:
+        return jsonify({"error": "Categoría y nombre del equipo son obligatorios"}), 400
+    conn = get_conn()
+    conn.execute("INSERT INTO equipos (categoria_id, nombre) VALUES (%s, %s)", (categoria_id, nombre))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/admin/torneo/equipos/<int:equipo_id>", methods=["PUT"])
+@admin_required
+def admin_editar_equipo(equipo_id):
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    categoria_id = data.get("categoria_id")
+    if not nombre or not categoria_id:
+        return jsonify({"error": "Categoría y nombre del equipo son obligatorios"}), 400
+    conn = get_conn()
+    conn.execute(
+        "UPDATE equipos SET nombre = %s, categoria_id = %s WHERE id = %s",
+        (nombre, categoria_id, equipo_id),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/equipos/<int:equipo_id>", methods=["DELETE"])
+@admin_required
+def admin_eliminar_equipo(equipo_id):
+    conn = get_conn()
+    equipo = conn.execute("SELECT escudo_url FROM equipos WHERE id = %s", (equipo_id,)).fetchone()
+    conn.execute("DELETE FROM equipos WHERE id = %s", (equipo_id,))
+    conn.commit()
+    conn.close()
+    if equipo and equipo["escudo_url"]:
+        try:
+            storage.eliminar_foto(equipo["escudo_url"])
+        except Exception:
+            pass
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/equipos/<int:equipo_id>/escudo", methods=["POST"])
+@admin_required
+def admin_subir_escudo(equipo_id):
+    conn = get_conn()
+    equipo = conn.execute("SELECT escudo_url FROM equipos WHERE id = %s", (equipo_id,)).fetchone()
+    if not equipo:
+        conn.close()
+        return jsonify({"error": "No existe ese equipo"}), 404
+
+    if "escudo" not in request.files:
+        conn.close()
+        return jsonify({"error": "No se envió ningún archivo"}), 400
+    archivo = request.files["escudo"]
+    if archivo.filename == "":
+        conn.close()
+        return jsonify({"error": "No se seleccionó ningún archivo"}), 400
+    ext = archivo.filename.rsplit(".", 1)[-1].lower() if "." in archivo.filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        conn.close()
+        return jsonify({"error": "Solo se permiten imágenes JPG, PNG o WEBP"}), 400
+    file_bytes = archivo.read()
+    tamano_mb = len(file_bytes) / (1024 * 1024)
+    if tamano_mb > 5:
+        conn.close()
+        return jsonify({"error": "La imagen no puede pesar más de 5 MB"}), 400
+
+    foto_anterior = equipo["escudo_url"]
+    if foto_anterior:
+        try:
+            storage.eliminar_foto(foto_anterior)
+        except Exception:
+            pass
+
+    try:
+        escudo_url = storage.guardar_foto(f"equipo_{equipo_id}", ext, file_bytes)
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": f"No se pudo guardar el escudo: {e}"}), 502
+
+    conn.execute("UPDATE equipos SET escudo_url = %s WHERE id = %s", (escudo_url, equipo_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "escudo_url": escudo_url})
+
+
+@app.route("/api/admin/torneo/jugadores", methods=["GET"])
+@admin_required
+def admin_listar_jugadores():
+    equipo_id = request.args.get("equipo_id")
+    conn = get_conn()
+    if equipo_id:
+        rows = conn.execute(
+            "SELECT id, equipo_id, nombre, cedula_asociado, numero FROM jugadores "
+            "WHERE equipo_id = %s ORDER BY nombre", (equipo_id,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, equipo_id, nombre, cedula_asociado, numero FROM jugadores ORDER BY nombre"
+        ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/admin/torneo/jugadores", methods=["POST"])
+@admin_required
+def admin_crear_jugador():
+    data = request.get_json(silent=True) or {}
+    equipo_id = data.get("equipo_id")
+    nombre = (data.get("nombre") or "").strip()
+    cedula_asociado = (data.get("cedula_asociado") or "").strip() or None
+    numero = (data.get("numero") or "").strip() or None
+    if not equipo_id or not nombre:
+        return jsonify({"error": "Equipo y nombre del jugador son obligatorios"}), 400
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO jugadores (equipo_id, nombre, cedula_asociado, numero) VALUES (%s, %s, %s, %s)",
+        (equipo_id, nombre, cedula_asociado, numero),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/admin/torneo/jugadores/<int:jugador_id>", methods=["PUT"])
+@admin_required
+def admin_editar_jugador(jugador_id):
+    data = request.get_json(silent=True) or {}
+    nombre = (data.get("nombre") or "").strip()
+    cedula_asociado = (data.get("cedula_asociado") or "").strip() or None
+    numero = (data.get("numero") or "").strip() or None
+    if not nombre:
+        return jsonify({"error": "El nombre del jugador es obligatorio"}), 400
+    conn = get_conn()
+    conn.execute(
+        "UPDATE jugadores SET nombre = %s, cedula_asociado = %s, numero = %s WHERE id = %s",
+        (nombre, cedula_asociado, numero, jugador_id),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/jugadores/<int:jugador_id>", methods=["DELETE"])
+@admin_required
+def admin_eliminar_jugador(jugador_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM jugadores WHERE id = %s", (jugador_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/partidos", methods=["GET"])
+@admin_required
+def admin_listar_partidos():
+    categoria_id = request.args.get("categoria_id")
+    conn = get_conn()
+    base_sql = """
+        SELECT p.id, p.categoria_id, p.jornada, p.fecha, p.goles_local, p.goles_visitante,
+               p.equipo_local_id, p.equipo_visitante_id,
+               el.nombre AS local_nombre, ev.nombre AS visitante_nombre
+        FROM partidos p
+        JOIN equipos el ON el.id = p.equipo_local_id
+        JOIN equipos ev ON ev.id = p.equipo_visitante_id
+    """
+    if categoria_id:
+        rows = conn.execute(base_sql + " WHERE p.categoria_id = %s ORDER BY p.id DESC", (categoria_id,)).fetchall()
+    else:
+        rows = conn.execute(base_sql + " ORDER BY p.id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/admin/torneo/partidos", methods=["POST"])
+@admin_required
+def admin_crear_partido():
+    data = request.get_json(silent=True) or {}
+    categoria_id = data.get("categoria_id")
+    equipo_local_id = data.get("equipo_local_id")
+    equipo_visitante_id = data.get("equipo_visitante_id")
+    jornada = (data.get("jornada") or "").strip() or None
+    fecha = (data.get("fecha") or "").strip() or None
+    goles_local = data.get("goles_local")
+    goles_visitante = data.get("goles_visitante")
+
+    if not categoria_id or not equipo_local_id or not equipo_visitante_id:
+        return jsonify({"error": "Categoría, equipo local y equipo visitante son obligatorios"}), 400
+    if str(equipo_local_id) == str(equipo_visitante_id):
+        return jsonify({"error": "El equipo local y el visitante no pueden ser el mismo"}), 400
+
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO partidos (categoria_id, equipo_local_id, equipo_visitante_id, jornada, fecha, "
+        "goles_local, goles_visitante) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        (categoria_id, equipo_local_id, equipo_visitante_id, jornada, fecha,
+         goles_local if goles_local not in ("", None) else None,
+         goles_visitante if goles_visitante not in ("", None) else None),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/admin/torneo/partidos/<int:partido_id>", methods=["PUT"])
+@admin_required
+def admin_editar_partido(partido_id):
+    data = request.get_json(silent=True) or {}
+    equipo_local_id = data.get("equipo_local_id")
+    equipo_visitante_id = data.get("equipo_visitante_id")
+    jornada = (data.get("jornada") or "").strip() or None
+    fecha = (data.get("fecha") or "").strip() or None
+    goles_local = data.get("goles_local")
+    goles_visitante = data.get("goles_visitante")
+
+    if not equipo_local_id or not equipo_visitante_id:
+        return jsonify({"error": "Equipo local y equipo visitante son obligatorios"}), 400
+    if str(equipo_local_id) == str(equipo_visitante_id):
+        return jsonify({"error": "El equipo local y el visitante no pueden ser el mismo"}), 400
+
+    conn = get_conn()
+    conn.execute(
+        "UPDATE partidos SET equipo_local_id = %s, equipo_visitante_id = %s, jornada = %s, "
+        "fecha = %s, goles_local = %s, goles_visitante = %s WHERE id = %s",
+        (equipo_local_id, equipo_visitante_id, jornada, fecha,
+         goles_local if goles_local not in ("", None) else None,
+         goles_visitante if goles_visitante not in ("", None) else None,
+         partido_id),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/partidos/<int:partido_id>", methods=["DELETE"])
+@admin_required
+def admin_eliminar_partido(partido_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM partidos WHERE id = %s", (partido_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/partidos/<int:partido_id>/goles", methods=["GET"])
+@admin_required
+def admin_listar_goles_partido(partido_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT g.id, g.jugador_id, g.cantidad, j.nombre AS jugador_nombre, j.equipo_id
+        FROM goles g JOIN jugadores j ON j.id = g.jugador_id
+        WHERE g.partido_id = %s ORDER BY g.id
+    """, (partido_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/admin/torneo/partidos/<int:partido_id>/goles", methods=["POST"])
+@admin_required
+def admin_agregar_gol(partido_id):
+    data = request.get_json(silent=True) or {}
+    jugador_id = data.get("jugador_id")
+    cantidad = data.get("cantidad") or 1
+    if not jugador_id:
+        return jsonify({"error": "El jugador es obligatorio"}), 400
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO goles (partido_id, jugador_id, cantidad) VALUES (%s, %s, %s)",
+        (partido_id, jugador_id, cantidad),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/admin/torneo/goles/<int:gol_id>", methods=["DELETE"])
+@admin_required
+def admin_eliminar_gol(gol_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM goles WHERE id = %s", (gol_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/partidos/<int:partido_id>/tarjetas", methods=["GET"])
+@admin_required
+def admin_listar_tarjetas_partido(partido_id):
+    conn = get_conn()
+    rows = conn.execute("""
+        SELECT t.id, t.jugador_id, t.tipo, t.cantidad, j.nombre AS jugador_nombre, j.equipo_id
+        FROM tarjetas t JOIN jugadores j ON j.id = t.jugador_id
+        WHERE t.partido_id = %s ORDER BY t.id
+    """, (partido_id,)).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/admin/torneo/partidos/<int:partido_id>/tarjetas", methods=["POST"])
+@admin_required
+def admin_agregar_tarjeta(partido_id):
+    data = request.get_json(silent=True) or {}
+    jugador_id = data.get("jugador_id")
+    tipo = (data.get("tipo") or "").strip().upper()
+    cantidad = data.get("cantidad") or 1
+    if not jugador_id or tipo not in ("AMARILLA", "ROJA"):
+        return jsonify({"error": "Jugador y tipo (AMARILLA/ROJA) son obligatorios"}), 400
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO tarjetas (partido_id, jugador_id, tipo, cantidad) VALUES (%s, %s, %s, %s)",
+        (partido_id, jugador_id, tipo, cantidad),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True}), 201
+
+
+@app.route("/api/admin/torneo/tarjetas/<int:tarjeta_id>", methods=["DELETE"])
+@admin_required
+def admin_eliminar_tarjeta(tarjeta_id):
+    conn = get_conn()
+    conn.execute("DELETE FROM tarjetas WHERE id = %s", (tarjeta_id,))
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
