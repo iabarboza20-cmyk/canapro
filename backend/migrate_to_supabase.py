@@ -79,8 +79,16 @@ CREATE TABLE IF NOT EXISTS jugadores (
     equipo_id       INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
     nombre          TEXT NOT NULL,
     cedula_asociado TEXT REFERENCES asociados(cedula) ON DELETE SET NULL,
-    numero          TEXT
+    numero          TEXT,
+    posicion        TEXT,
+    foto_url        TEXT
 );
+
+-- Por si la tabla ya existía de una migración anterior (antes de agregar
+-- la nómina pública con foto/posición): Postgres sí soporta
+-- "ADD COLUMN IF NOT EXISTS", a diferencia de SQLite.
+ALTER TABLE jugadores ADD COLUMN IF NOT EXISTS posicion TEXT;
+ALTER TABLE jugadores ADD COLUMN IF NOT EXISTS foto_url TEXT;
 
 CREATE TABLE IF NOT EXISTS partidos (
     id                   SERIAL PRIMARY KEY,
@@ -199,7 +207,7 @@ def migrate():
     torneo_tablas = [
         ("categorias", ["nombre", "orden"], "nombre"),
         ("equipos", ["categoria_id", "nombre", "escudo_url"], None),
-        ("jugadores", ["equipo_id", "nombre", "cedula_asociado", "numero"], None),
+        ("jugadores", ["equipo_id", "nombre", "cedula_asociado", "numero", "posicion", "foto_url"], None),
         ("partidos", ["categoria_id", "equipo_local_id", "equipo_visitante_id",
                        "jornada", "fecha", "goles_local", "goles_visitante"], None),
         ("goles", ["partido_id", "jugador_id", "cantidad"], None),

@@ -123,9 +123,16 @@ def admin_page():
 
 
 @app.route("/torneo")
-@login_required
 def torneo_page():
+    # Público: cualquiera puede ver posiciones, goleadores y destacados sin
+    # necesidad de iniciar sesión. La gestión sigue protegida en /admin/torneo.
     return send_from_directory(FRONTEND_DIR, "torneo.html")
+
+
+@app.route("/torneo/nomina")
+def torneo_nomina_page():
+    # Público: nómina de jugadores por equipo (foto, dorsal, posición).
+    return send_from_directory(FRONTEND_DIR, "torneo_nomina.html")
 
 
 @app.route("/admin/torneo")
@@ -569,12 +576,11 @@ def admin_eliminar_usuario(user_id):
 
 
 # ---------------------------------------------------------------------------
-# Torneo interno — API pública (viewer y admin): tabla de posiciones,
-# goleadores y destacados por categoría
+# Torneo interno — API pública (cualquier visitante, sin login): tabla de
+# posiciones, goleadores, destacados y nómina de jugadores por categoría
 # ---------------------------------------------------------------------------
 
 @app.route("/api/torneo/categorias")
-@login_required
 def torneo_categorias():
     conn = get_conn()
     rows = conn.execute(
@@ -618,7 +624,6 @@ TABLA_SQL = """
 
 
 @app.route("/api/torneo/tabla/<int:categoria_id>")
-@login_required
 def torneo_tabla(categoria_id):
     conn = get_conn()
     rows = conn.execute(TABLA_SQL, (categoria_id, categoria_id, categoria_id)).fetchall()
@@ -627,7 +632,6 @@ def torneo_tabla(categoria_id):
 
 
 @app.route("/api/torneo/goleadores/<int:categoria_id>")
-@login_required
 def torneo_goleadores(categoria_id):
     conn = get_conn()
     rows = conn.execute("""
@@ -647,7 +651,6 @@ def torneo_goleadores(categoria_id):
 
 
 @app.route("/api/torneo/destacados/<int:categoria_id>")
-@login_required
 def torneo_destacados(categoria_id):
     conn = get_conn()
 
@@ -707,7 +710,6 @@ def torneo_destacados(categoria_id):
 
 
 @app.route("/api/torneo/partidos/<int:categoria_id>")
-@login_required
 def torneo_partidos(categoria_id):
     conn = get_conn()
     rows = conn.execute("""
@@ -722,6 +724,43 @@ def torneo_partidos(categoria_id):
     """, (categoria_id,)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/torneo/equipos/<int:categoria_id>")
+def torneo_equipos_publico(categoria_id):
+    # Versión pública (solo lectura) de la lista de equipos de una
+    # categoría, para el selector de la nómina. No requiere login.
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT id, nombre, escudo_url FROM equipos WHERE categoria_id = %s ORDER BY nombre",
+        (categoria_id,),
+    ).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/api/torneo/nomina/<int:equipo_id>")
+def torneo_nomina_equipo(equipo_id):
+    # Nómina pública (solo lectura) de un equipo: nombre, dorsal, posición
+    # y foto. No expone cédula de asociado (eso es solo para el admin).
+    conn = get_conn()
+    equipo = conn.execute(
+        "SELECT id, nombre, escudo_url, categoria_id FROM equipos WHERE id = %s", (equipo_id,)
+    ).fetchone()
+    if not equipo:
+        conn.close()
+        return jsonify({"error": "No existe ese equipo"}), 404
+    # No se ordena numéricamente por "numero" (es TEXT libre, puede traer
+    # valores no numéricos como "S/N"); un CAST a entero fallaría en
+    # Postgres si algún valor no es numérico, así que se ordena por nombre
+    # dejando primero a quienes sí tienen número asignado.
+    jugadores = conn.execute(
+        "SELECT id, nombre, numero, posicion, foto_url FROM jugadores "
+        "WHERE equipo_id = %s ORDER BY (numero IS NULL), nombre",
+        (equipo_id,),
+    ).fetchall()
+    conn.close()
+    return jsonify({"equipo": dict(equipo), "jugadores": [dict(j) for j in jugadores]})
 
 
 # ---------------------------------------------------------------------------
@@ -894,15 +933,18 @@ def admin_listar_jugadores():
     conn = get_conn()
     if equipo_id:
         rows = conn.execute(
-            "SELECT id, equipo_id, nombre, cedula_asociado, numero FROM jugadores "
+            "SELECT id, equipo_id, nombre, cedula_asociado, numero, posicion, foto_url FROM jugadores "
             "WHERE equipo_id = %s ORDER BY nombre", (equipo_id,)
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT id, equipo_id, nombre, cedula_asociado, numero FROM jugadores ORDER BY nombre"
+            "SELECT id, equipo_id, nombre, cedula_asociado, numero, posicion, foto_url FROM jugadores ORDER BY nombre"
         ).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+POSICIONES_VALIDAS = ("Portero", "Defensa", "Mediocampista", "Delantero")
 
 
 @app.route("/api/admin/torneo/jugadores", methods=["POST"])
@@ -913,12 +955,16 @@ def admin_crear_jugador():
     nombre = (data.get("nombre") or "").strip()
     cedula_asociado = (data.get("cedula_asociado") or "").strip() or None
     numero = (data.get("numero") or "").strip() or None
+    posicion = (data.get("posicion") or "").strip() or None
+    if posicion and posicion not in POSICIONES_VALIDAS:
+        return jsonify({"error": "Posición inválida"}), 400
     if not equipo_id or not nombre:
         return jsonify({"error": "Equipo y nombre del jugador son obligatorios"}), 400
     conn = get_conn()
     conn.execute(
-        "INSERT INTO jugadores (equipo_id, nombre, cedula_asociado, numero) VALUES (%s, %s, %s, %s)",
-        (equipo_id, nombre, cedula_asociado, numero),
+        "INSERT INTO jugadores (equipo_id, nombre, cedula_asociado, numero, posicion) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (equipo_id, nombre, cedula_asociado, numero, posicion),
     )
     conn.commit()
     conn.close()
@@ -932,12 +978,15 @@ def admin_editar_jugador(jugador_id):
     nombre = (data.get("nombre") or "").strip()
     cedula_asociado = (data.get("cedula_asociado") or "").strip() or None
     numero = (data.get("numero") or "").strip() or None
+    posicion = (data.get("posicion") or "").strip() or None
+    if posicion and posicion not in POSICIONES_VALIDAS:
+        return jsonify({"error": "Posición inválida"}), 400
     if not nombre:
         return jsonify({"error": "El nombre del jugador es obligatorio"}), 400
     conn = get_conn()
     conn.execute(
-        "UPDATE jugadores SET nombre = %s, cedula_asociado = %s, numero = %s WHERE id = %s",
-        (nombre, cedula_asociado, numero, jugador_id),
+        "UPDATE jugadores SET nombre = %s, cedula_asociado = %s, numero = %s, posicion = %s WHERE id = %s",
+        (nombre, cedula_asociado, numero, posicion, jugador_id),
     )
     conn.commit()
     conn.close()
@@ -948,10 +997,61 @@ def admin_editar_jugador(jugador_id):
 @admin_required
 def admin_eliminar_jugador(jugador_id):
     conn = get_conn()
+    jugador = conn.execute("SELECT foto_url FROM jugadores WHERE id = %s", (jugador_id,)).fetchone()
     conn.execute("DELETE FROM jugadores WHERE id = %s", (jugador_id,))
     conn.commit()
     conn.close()
+    if jugador and jugador["foto_url"]:
+        try:
+            storage.eliminar_foto(jugador["foto_url"])
+        except Exception:
+            pass
     return jsonify({"ok": True})
+
+
+@app.route("/api/admin/torneo/jugadores/<int:jugador_id>/foto", methods=["POST"])
+@admin_required
+def admin_subir_foto_jugador(jugador_id):
+    conn = get_conn()
+    jugador = conn.execute("SELECT foto_url FROM jugadores WHERE id = %s", (jugador_id,)).fetchone()
+    if not jugador:
+        conn.close()
+        return jsonify({"error": "No existe ese jugador"}), 404
+
+    if "foto" not in request.files:
+        conn.close()
+        return jsonify({"error": "No se envió ningún archivo"}), 400
+    archivo = request.files["foto"]
+    if archivo.filename == "":
+        conn.close()
+        return jsonify({"error": "No se seleccionó ningún archivo"}), 400
+    ext = archivo.filename.rsplit(".", 1)[-1].lower() if "." in archivo.filename else ""
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        conn.close()
+        return jsonify({"error": "Solo se permiten imágenes JPG, PNG o WEBP"}), 400
+    file_bytes = archivo.read()
+    tamano_mb = len(file_bytes) / (1024 * 1024)
+    if tamano_mb > 5:
+        conn.close()
+        return jsonify({"error": "La imagen no puede pesar más de 5 MB"}), 400
+
+    foto_anterior = jugador["foto_url"]
+    if foto_anterior:
+        try:
+            storage.eliminar_foto(foto_anterior)
+        except Exception:
+            pass
+
+    try:
+        foto_url = storage.guardar_foto(f"jugador_{jugador_id}", ext, file_bytes)
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": f"No se pudo guardar la foto: {e}"}), 502
+
+    conn.execute("UPDATE jugadores SET foto_url = %s WHERE id = %s", (foto_url, jugador_id))
+    conn.commit()
+    conn.close()
+    return jsonify({"ok": True, "foto_url": foto_url})
 
 
 @app.route("/api/admin/torneo/partidos", methods=["GET"])

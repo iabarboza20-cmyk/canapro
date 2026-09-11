@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS jugadores (
     equipo_id       INTEGER NOT NULL REFERENCES equipos(id) ON DELETE CASCADE,
     nombre          TEXT NOT NULL,
     cedula_asociado TEXT REFERENCES asociados(cedula) ON DELETE SET NULL,
-    numero          TEXT
+    numero          TEXT,
+    posicion        TEXT,
+    foto_url        TEXT
 );
 
 CREATE TABLE IF NOT EXISTS partidos (
@@ -74,10 +76,24 @@ CREATE INDEX IF NOT EXISTS idx_tarjetas_partido ON tarjetas(partido_id);
 DEFAULT_CATEGORIA = "TORNEO CANAPROSUCRE 2026"
 
 
+def migrar_columnas_jugadores(cur):
+    """Agrega posicion/foto_url a instalaciones que ya tenían la tabla
+    jugadores creada antes de que existieran estas columnas. SQLite no
+    soporta "ADD COLUMN IF NOT EXISTS", así que se intenta y se ignora el
+    error si la columna ya existe."""
+    for columna, tipo in (("posicion", "TEXT"), ("foto_url", "TEXT")):
+        try:
+            cur.execute(f"ALTER TABLE jugadores ADD COLUMN {columna} {tipo}")
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
+
+
 def init():
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
     cur = conn.cursor()
+    migrar_columnas_jugadores(cur)
 
     existente = cur.execute(
         "SELECT COUNT(*) FROM categorias"
