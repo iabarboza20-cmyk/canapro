@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<title>Gestión del torneo — CANAPROSUCRE</title>
+<style>
+  :root{
+    --verde-claro:#8fd14f;
+    --verde-medio:#6fa832;
+    --verde-oscuro:#4c7a1f;
+    --verde-header:#5c9128;
+    --azul:#12297a;
+    --amarillo:#f6d413;
+    --naranja:#f2a00c;
+    --texto-oscuro:#233d0c;
+    --gris:#9a9a9a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:linear-gradient(180deg,#a9e06a,#7fc23f);
+    min-height:100vh;
+    padding:16px;
+  }
+  .wrap{ max-width:960px; margin:0 auto; }
+
+  .topbar{
+    background:var(--verde-oscuro); color:#fff; padding:8px 16px;
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12px; border-radius:4px; margin-bottom:12px; flex-wrap:wrap; gap:8px;
+  }
+  .topbar .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .topbar a, .topbar button{
+    background:var(--amarillo); color:var(--texto-oscuro); border:none;
+    padding:5px 10px; border-radius:4px; font-weight:700; font-size:11px;
+    text-transform:uppercase; text-decoration:none; cursor:pointer;
+  }
+  .topbar button.logout{ background:#a33; color:#fff; }
+
+  h1{
+    background:var(--verde-header); color:#fff; padding:14px 18px; border-radius:6px 6px 0 0;
+    margin:0; font-size:18px; border:3px solid var(--verde-oscuro); border-bottom:none;
+  }
+
+  .tabs{ display:flex; gap:4px; flex-wrap:wrap; }
+  .tabs button{
+    background:var(--verde-medio); color:#fff; border:none;
+    padding:9px 16px; font-weight:700; font-size:12px; text-transform:uppercase;
+    cursor:pointer; border-radius:6px 6px 0 0; opacity:.7;
+  }
+  .tabs button.active{ background:var(--verde-header); opacity:1; }
+  .hidden{ display:none; }
+
+  .panel{
+    background:var(--verde-claro); border:3px solid var(--verde-oscuro);
+    border-radius:0 0 6px 6px; padding:16px; margin-bottom:20px;
+  }
+
+  .search-row{ display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+  .search-row input, .search-row select{
+    flex:1; min-width:160px; padding:9px 12px; border-radius:4px;
+    border:2px solid var(--verde-oscuro); font-size:14px;
+  }
+  .btn{
+    background:var(--azul); color:#fff; border:none; padding:9px 16px;
+    border-radius:4px; font-weight:700; cursor:pointer; font-size:13px; text-transform:uppercase;
+  }
+  .btn:hover{ opacity:.9; }
+  .btn.secondary{ background:var(--verde-medio); }
+  .btn.danger{ background:#a33; }
+  .btn.small{ padding:5px 10px; font-size:11px; }
+
+  table{ width:100%; border-collapse:collapse; background:#fff; border-radius:4px; overflow:hidden; }
+  th, td{ padding:8px 10px; text-align:left; font-size:13px; border-bottom:1px solid #ddd; }
+  th{ background:var(--verde-medio); color:#fff; text-transform:uppercase; font-size:11px; }
+  tr:hover td{ background:#f7fbee; }
+
+  .escudo-thumb{
+    width:28px;height:28px;border-radius:50%;object-fit:contain;
+    background:#f0f0f0;border:1px solid #ddd;vertical-align:middle;margin-right:6px;
+  }
+
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
+    align-items:center; justify-content:center; padding:16px; z-index:100;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal{
+    background:#fff; border-radius:6px; padding:20px; width:100%; max-width:600px;
+    max-height:90vh; overflow-y:auto; border:3px solid var(--verde-oscuro);
+  }
+  .modal h2{ margin-top:0; font-size:16px; color:var(--texto-oscuro); }
+  .field-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .field-grid.full{ grid-template-columns:1fr; }
+  .field-grid label{ font-size:11px; font-weight:700; text-transform:uppercase; color:var(--texto-oscuro); display:block; margin-bottom:3px; }
+  .field-grid input, .field-grid select{
+    width:100%; padding:8px 10px; border-radius:4px; border:2px solid var(--verde-oscuro); font-size:13px;
+  }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+
+  .sub-section{ margin-top:16px; border-top:2px solid #ddd; padding-top:12px; }
+  .sub-section h3{ font-size:13px; margin:0 0 8px; color:var(--texto-oscuro); }
+  .sub-row{
+    display:flex; gap:6px; align-items:center; margin-bottom:6px; font-size:12px;
+    background:#f5f5f5; padding:6px 8px; border-radius:4px;
+  }
+  .sub-row span{ flex:1; }
+  .msg{ padding:10px; border-radius:4px; margin-bottom:12px; font-weight:600; font-size:13px; display:none; }
+  .msg.error{ background:#f3d0d0; color:#7a1414; }
+  .msg.ok{ background:#d6f0c2; color:var(--texto-oscuro); }
+
+  @media (max-width:600px){
+    .field-grid{ grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div id="userInfo"></div>
+    <div class="actions">
+      <a href="/torneo">Ver torneo</a>
+      <a href="/">Ir al buscador</a>
+      <button class="logout" id="logoutBtn">Salir</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="active" id="tabCategoriasBtn">Categorías</button>
+    <button id="tabEquiposBtn">Equipos</button>
+    <button id="tabJugadoresBtn">Jugadores</button>
+    <button id="tabPartidosBtn">Partidos</button>
+  </div>
+
+  <!-- ============ CATEGORÍAS ============ -->
+  <div id="panelCategorias">
+    <h1>Gestión del torneo — Categorías</h1>
+    <div class="panel">
+      <div class="msg" id="categoriasMsg"></div>
+      <div class="search-row">
+        <button class="btn" id="newCategoriaBtn">+ Nueva categoría</button>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Orden</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaCategorias"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ EQUIPOS ============ -->
+  <div id="panelEquipos" class="hidden">
+    <h1>Gestión del torneo — Equipos</h1>
+    <div class="panel">
+      <div class="msg" id="equiposMsg"></div>
+      <div class="search-row">
+        <select id="equiposFiltroCategoria"></select>
+        <button class="btn" id="newEquipoBtn">+ Nuevo equipo</button>
+      </div>
+      <table>
+        <thead><tr><th>Equipo</th><th>Categoría</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaEquipos"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ JUGADORES ============ -->
+  <div id="panelJugadores" class="hidden">
+    <h1>Gestión del torneo — Jugadores</h1>
+    <div class="panel">
+      <div class="msg" id="jugadoresMsg"></div>
+      <div class="search-row">
+        <select id="jugadoresFiltroCategoria"></select>
+        <select id="jugadoresFiltroEquipo"></select>
+        <button class="btn" id="newJugadorBtn">+ Nuevo jugador</button>
+      </div>
+      <table>
+        <thead><tr><th>Jugador</th><th>Equipo</th><th>Número</th><th>Cédula asociado</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaJugadores"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ PARTIDOS ============ -->
+  <div id="panelPartidos" class="hidden">
+    <h1>Gestión del torneo — Partidos y resultados</h1>
+    <div class="panel">
+      <div class="msg" id="partidosMsg"></div>
+      <div class="search-row">
+        <select id="partidosFiltroCategoria"></select>
+        <button class="btn" id="newPartidoBtn">+ Nuevo partido</button>
+      </div>
+      <table>
+        <thead><tr><th>Jornada</th><th>Fecha</th><th>Local</th><th>Marcador</th><th>Visitante</th><th>Acciones</th></tr></thead>
+        <tbody id="tablaPartidos"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal categoría -->
+<div class="modal-overlay" id="modalCategoria">
+  <div class="modal" style="max-width:420px;">
+    <h2 id="categoriaModalTitle">Nueva categoría</h2>
+    <div class="msg" id="categoriaModalMsg"></div>
+    <form id="categoriaForm">
+      <div class="field-grid full">
+        <div><label>Nombre</label><input type="text" id="cat-nombre" required placeholder="LIBRE, ESPECIAL, RECREATIVA..."></div>
+        <div><label>Orden (menor número aparece primero)</label><input type="number" id="cat-orden" value="0"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="categoriaCancelBtn">Cancelar</button>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal equipo -->
+<div class="modal-overlay" id="modalEquipo">
+  <div class="modal" style="max-width:460px;">
+    <h2 id="equipoModalTitle">Nuevo equipo</h2>
+    <div class="msg" id="equipoModalMsg"></div>
+    <form id="equipoForm">
+      <div class="field-grid full">
+        <div><label>Categoría</label><select id="eq-categoria" required></select></div>
+        <div><label>Nombre del equipo</label><input type="text" id="eq-nombre" required></div>
+      </div>
+      <div class="sub-section" id="escudoSection" style="display:none;">
+        <h3>Escudo</h3>
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:10px;">
+          <img id="escudo-preview" src="" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:contain;border:2px solid var(--verde-oscuro);background:#f2f2f2;display:none;">
+          <div style="flex:1;">
+            <input type="file" id="escudo-input" accept=".jpg,.jpeg,.png,.webp">
+            <div style="font-size:11px;color:#777;margin-top:4px;">JPG, PNG o WEBP, máximo 5MB.</div>
+          </div>
+          <button type="button" class="btn small secondary" id="escudoUploadBtn">Subir</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="equipoCancelBtn">Cancelar</button>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal jugador -->
+<div class="modal-overlay" id="modalJugador">
+  <div class="modal" style="max-width:460px;">
+    <h2 id="jugadorModalTitle">Nuevo jugador</h2>
+    <div class="msg" id="jugadorModalMsg"></div>
+    <form id="jugadorForm">
+      <div class="field-grid full">
+        <div><label>Equipo</label><select id="jg-equipo" required></select></div>
+        <div><label>Nombre del jugador</label><input type="text" id="jg-nombre" required></div>
+        <div><label>Número de camiseta (opcional)</label><input type="text" id="jg-numero"></div>
+        <div><label>Cédula de asociado (opcional, si es socio de CANAPROSUCRE)</label><input type="text" id="jg-cedula"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="jugadorCancelBtn">Cancelar</button>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal partido -->
+<div class="modal-overlay" id="modalPartido">
+  <div class="modal" style="max-width:640px;">
+    <h2 id="partidoModalTitle">Nuevo partido</h2>
+    <div class="msg" id="partidoModalMsg"></div>
+    <form id="partidoForm">
+      <div class="field-grid">
+        <div><label>Categoría</label><select id="pt-categoria" required></select></div>
+        <div><label>Jornada</label><input type="text" id="pt-jornada" placeholder="Fecha 1, Cuadrangular..."></div>
+        <div><label>Equipo local</label><select id="pt-local" required></select></div>
+        <div><label>Equipo visitante</label><select id="pt-visitante" required></select></div>
+        <div><label>Goles local</label><input type="number" min="0" id="pt-goles-local" placeholder="Sin jugar"></div>
+        <div><label>Goles visitante</label><input type="number" min="0" id="pt-goles-visitante" placeholder="Sin jugar"></div>
+        <div><label>Fecha</label><input type="date" id="pt-fecha"></div>
+      </div>
+
+      <div class="sub-section" id="golesSection" style="display:none;">
+        <h3>Goles del partido</h3>
+        <div id="golesList"></div>
+        <div class="field-grid">
+          <div><label>Jugador</label><select id="ng-jugador"></select></div>
+          <div><label>Cantidad</label><input type="number" min="1" id="ng-cantidad" value="1"></div>
+        </div>
+        <button type="button" class="btn small secondary" id="addGolBtn">+ Agregar gol</button>
+      </div>
+
+      <div class="sub-section" id="tarjetasSection" style="display:none;">
+        <h3>Tarjetas del partido</h3>
+        <div id="tarjetasList"></div>
+        <div class="field-grid">
+          <div><label>Jugador</label><select id="nt-jugador"></select></div>
+          <div>
+            <label>Tipo</label>
+            <select id="nt-tipo">
+              <option value="AMARILLA">Amarilla</option>
+              <option value="ROJA">Roja</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" class="btn small secondary" id="addTarjetaBtn">+ Agregar tarjeta</button>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn secondary" id="partidoCancelBtn">Cancelar</button>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const API_BASE = "";
+let categorias = [];
+let equiposCache = [];   // todos los equipos (todas las categorías)
+let jugadoresCache = []; // todos los jugadores (todos los equipos)
+
+// --- Sesión ---
+async function cargarSesion(){
+  try{
+    const res = await fetch(`${API_BASE}/api/me`, { credentials: "same-origin" });
+    if(!res.ok){ window.location.href = "/login"; return; }
+    const data = await res.json();
+    if(data.rol !== "admin"){ window.location.href = "/"; return; }
+    document.getElementById("userInfo").textContent = `${data.username} (Administrador)`;
+  }catch(err){ window.location.href = "/login"; }
+}
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "same-origin" });
+  window.location.href = "/login";
+});
+
+function showMsg(elId, text, type){
+  const el = document.getElementById(elId);
+  el.textContent = text;
+  el.className = `msg ${type}`;
+  el.style.display = "block";
+  setTimeout(() => { el.style.display = "none"; }, 3500);
+}
+
+// --- Datos base compartidos ---
+async function cargarCategorias(){
+  const res = await fetch(`${API_BASE}/api/torneo/categorias`, { credentials: "same-origin" });
+  categorias = await res.json();
+}
+async function cargarEquipos(){
+  const res = await fetch(`${API_BASE}/api/admin/torneo/equipos`, { credentials: "same-origin" });
+  equiposCache = await res.json();
+}
+async function cargarJugadores(){
+  const res = await fetch(`${API_BASE}/api/admin/torneo/jugadores`, { credentials: "same-origin" });
+  jugadoresCache = await res.json();
+}
+function selectOptions(items, valueKey, labelKey, placeholder){
+  let html = placeholder ? `<option value="">${placeholder}</option>` : "";
+  html += items.map(it => `<option value="${it[valueKey]}">${it[labelKey]}</option>`).join("");
+  return html;
+}
+
+/* =========================================================
+   PESTAÑAS
+   ========================================================= */
+const tabs = {
+  categorias: { btn: "tabCategoriasBtn", panel: "panelCategorias" },
+  equipos: { btn: "tabEquiposBtn", panel: "panelEquipos" },
+  jugadores: { btn: "tabJugadoresBtn", panel: "panelJugadores" },
+  partidos: { btn: "tabPartidosBtn", panel: "panelPartidos" },
+};
+function activarTab(nombre){
+  Object.values(tabs).forEach(t => {
+    document.getElementById(t.btn).classList.remove("active");
+    document.getElementById(t.panel).classList.add("hidden");
+  });
+  document.getElementById(tabs[nombre].btn).classList.add("active");
+  document.getElementById(tabs[nombre].panel).classList.remove("hidden");
+}
+document.getElementById("tabCategoriasBtn").addEventListener("click", () => { activarTab("categorias"); cargarTablaCategorias(); });
+document.getElementById("tabEquiposBtn").addEventListener("click", async () => {
+  activarTab("equipos");
+  await prepararFiltrosEquipos();
+  cargarTablaEquipos();
+});
+document.getElementById("tabJugadoresBtn").addEventListener("click", async () => {
+  activarTab("jugadores");
+  await prepararFiltrosJugadores();
+  cargarTablaJugadores();
+});
+document.getElementById("tabPartidosBtn").addEventListener("click", async () => {
+  activarTab("partidos");
+  await prepararFiltroPartidos();
+  cargarTablaPartidos();
+});
+
+/* =========================================================
+   CATEGORÍAS
+   ========================================================= */
+async function cargarTablaCategorias(){
+  await cargarCategorias();
+  const tbody = document.getElementById("tablaCategorias");
+  tbody.innerHTML = "";
+  if(categorias.length === 0){
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#999;">Sin categorías todavía</td></tr>`;
+    return;
+  }
+  categorias.forEach(c => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${c.nombre}</td>
+      <td>${c.orden}</td>
+      <td>
+        <button class="btn small secondary" onclick="editarCategoria(${c.id}, '${c.nombre.replace(/'/g, "\\'")}', ${c.orden})">Editar</button>
+        <button class="btn small danger" onclick="eliminarCategoria(${c.id})">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+let categoriaEditando = null;
+const modalCategoria = document.getElementById("modalCategoria");
+document.getElementById("newCategoriaBtn").addEventListener("click", () => {
+  categoriaEditando = null;
+  document.getElementById("categoriaModalTitle").textContent = "Nueva categoría";
+  document.getElementById("categoriaForm").reset();
+  document.getElementById("cat-orden").value = 0;
+  modalCategoria.classList.add("open");
+});
+document.getElementById("categoriaCancelBtn").addEventListener("click", () => modalCategoria.classList.remove("open"));
+
+function editarCategoria(id, nombre, orden){
+  categoriaEditando = id;
+  document.getElementById("categoriaModalTitle").textContent = "Editar categoría";
+  document.getElementById("cat-nombre").value = nombre;
+  document.getElementById("cat-orden").value = orden;
+  modalCategoria.classList.add("open");
+}
+
+document.getElementById("categoriaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nombre = document.getElementById("cat-nombre").value.trim();
+  const orden = Number(document.getElementById("cat-orden").value) || 0;
+  const esNuevo = categoriaEditando === null;
+  const url = esNuevo ? `${API_BASE}/api/admin/torneo/categorias` : `${API_BASE}/api/admin/torneo/categorias/${categoriaEditando}`;
+  const res = await fetch(url, {
+    method: esNuevo ? "POST" : "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ nombre, orden }),
+  });
+  const data = await res.json();
+  if(!res.ok){ showMsg("categoriaModalMsg", data.error || "No se pudo guardar.", "error"); return; }
+  modalCategoria.classList.remove("open");
+  showMsg("categoriasMsg", esNuevo ? "Categoría creada." : "Cambios guardados.", "ok");
+  cargarTablaCategorias();
+});
+
+async function eliminarCategoria(id){
+  if(!confirm("¿Eliminar esta categoría? También se eliminarán sus equipos, jugadores y partidos.")) return;
+  const res = await fetch(`${API_BASE}/api/admin/torneo/categorias/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if(res.ok){ showMsg("categoriasMsg", "Categoría eliminada.", "ok"); cargarTablaCategorias(); }
+}
+
+/* =========================================================
+   EQUIPOS
+   ========================================================= */
+async function prepararFiltrosEquipos(){
+  await cargarCategorias();
+  const sel = document.getElementById("equiposFiltroCategoria");
+  sel.innerHTML = selectOptions(categorias, "id", "nombre", "Todas las categorías");
+  sel.onchange = cargarTablaEquipos;
+}
+
+async function cargarTablaEquipos(){
+  const categoriaId = document.getElementById("equiposFiltroCategoria").value;
+  const url = categoriaId
+    ? `${API_BASE}/api/admin/torneo/equipos?categoria_id=${categoriaId}`
+    : `${API_BASE}/api/admin/torneo/equipos`;
+  const res = await fetch(url, { credentials: "same-origin" });
+  const rows = await res.json();
+  const tbody = document.getElementById("tablaEquipos");
+  tbody.innerHTML = "";
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#999;">Sin equipos</td></tr>`;
+    return;
+  }
+  rows.forEach(eq => {
+    const cat = categorias.find(c => c.id === eq.categoria_id);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${eq.escudo_url ? `<img class="escudo-thumb" src="${eq.escudo_url}">` : ""}${eq.nombre}</td>
+      <td>${cat ? cat.nombre : "-"}</td>
+      <td>
+        <button class="btn small secondary" onclick="editarEquipo(${eq.id})">Editar</button>
+        <button class="btn small danger" onclick="eliminarEquipo(${eq.id})">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+let equipoEditando = null;
+const modalEquipo = document.getElementById("modalEquipo");
+
+async function abrirNuevoEquipo(){
+  equipoEditando = null;
+  document.getElementById("equipoModalTitle").textContent = "Nuevo equipo";
+  document.getElementById("equipoForm").reset();
+  document.getElementById("eq-categoria").innerHTML = selectOptions(categorias, "id", "nombre", null);
+  document.getElementById("escudoSection").style.display = "none";
+  modalEquipo.classList.add("open");
+}
+document.getElementById("newEquipoBtn").addEventListener("click", async () => {
+  await cargarCategorias();
+  abrirNuevoEquipo();
+});
+document.getElementById("equipoCancelBtn").addEventListener("click", () => modalEquipo.classList.remove("open"));
+
+async function editarEquipo(id){
+  await cargarCategorias();
+  await cargarEquipos();
+  const eq = equiposCache.find(e => e.id === id);
+  if(!eq) return;
+  equipoEditando = id;
+  document.getElementById("equipoModalTitle").textContent = `Editar: ${eq.nombre}`;
+  document.getElementById("eq-categoria").innerHTML = selectOptions(categorias, "id", "nombre", null);
+  document.getElementById("eq-categoria").value = eq.categoria_id;
+  document.getElementById("eq-nombre").value = eq.nombre;
+  document.getElementById("escudoSection").style.display = "block";
+  const preview = document.getElementById("escudo-preview");
+  document.getElementById("escudo-input").value = "";
+  if(eq.escudo_url){ preview.src = eq.escudo_url; preview.style.display = "block"; }
+  else { preview.style.display = "none"; }
+  modalEquipo.classList.add("open");
+}
+
+document.getElementById("equipoForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const categoria_id = document.getElementById("eq-categoria").value;
+  const nombre = document.getElementById("eq-nombre").value.trim();
+  const esNuevo = equipoEditando === null;
+  const url = esNuevo ? `${API_BASE}/api/admin/torneo/equipos` : `${API_BASE}/api/admin/torneo/equipos/${equipoEditando}`;
+  const res = await fetch(url, {
+    method: esNuevo ? "POST" : "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ categoria_id, nombre }),
+  });
+  const data = await res.json();
+  if(!res.ok){ showMsg("equipoModalMsg", data.error || "No se pudo guardar.", "error"); return; }
+  modalEquipo.classList.remove("open");
+  showMsg("equiposMsg", esNuevo ? "Equipo creado." : "Cambios guardados.", "ok");
+  await prepararFiltrosEquipos();
+  cargarTablaEquipos();
+});
+
+document.getElementById("escudoUploadBtn").addEventListener("click", async () => {
+  if(!equipoEditando){ showMsg("equipoModalMsg", "Primero guarda el equipo antes de subir el escudo.", "error"); return; }
+  const input = document.getElementById("escudo-input");
+  if(!input.files || input.files.length === 0){ showMsg("equipoModalMsg", "Selecciona una imagen primero.", "error"); return; }
+  const formData = new FormData();
+  formData.append("escudo", input.files[0]);
+  const res = await fetch(`${API_BASE}/api/admin/torneo/equipos/${equipoEditando}/escudo`, {
+    method: "POST", credentials: "same-origin", body: formData,
+  });
+  const data = await res.json();
+  if(!res.ok){ showMsg("equipoModalMsg", data.error || "No se pudo subir el escudo.", "error"); return; }
+  const preview = document.getElementById("escudo-preview");
+  preview.src = data.escudo_url + "?t=" + Date.now();
+  preview.style.display = "block";
+  showMsg("equipoModalMsg", "Escudo actualizado.", "ok");
+  cargarTablaEquipos();
+});
+
+async function eliminarEquipo(id){
+  if(!confirm("¿Eliminar este equipo? También se eliminarán sus jugadores y sus partidos.")) return;
+  const res = await fetch(`${API_BASE}/api/admin/torneo/equipos/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if(res.ok){ showMsg("equiposMsg", "Equipo eliminado.", "ok"); cargarTablaEquipos(); }
+}
+
+/* =========================================================
+   JUGADORES
+   ========================================================= */
+async function prepararFiltrosJugadores(){
+  await cargarCategorias();
+  await cargarEquipos();
+  const selCat = document.getElementById("jugadoresFiltroCategoria");
+  selCat.innerHTML = selectOptions(categorias, "id", "nombre", "Todas las categorías");
+  selCat.onchange = () => { actualizarFiltroEquipoJugadores(); cargarTablaJugadores(); };
+  actualizarFiltroEquipoJugadores();
+  document.getElementById("jugadoresFiltroEquipo").onchange = cargarTablaJugadores;
+}
+function actualizarFiltroEquipoJugadores(){
+  const categoriaId = document.getElementById("jugadoresFiltroCategoria").value;
+  const equipos = categoriaId ? equiposCache.filter(e => String(e.categoria_id) === categoriaId) : equiposCache;
+  document.getElementById("jugadoresFiltroEquipo").innerHTML = selectOptions(equipos, "id", "nombre", "Todos los equipos");
+}
+
+async function cargarTablaJugadores(){
+  const equipoId = document.getElementById("jugadoresFiltroEquipo").value;
+  const url = equipoId
+    ? `${API_BASE}/api/admin/torneo/jugadores?equipo_id=${equipoId}`
+    : `${API_BASE}/api/admin/torneo/jugadores`;
+  const res = await fetch(url, { credentials: "same-origin" });
+  const rows = await res.json();
+  const tbody = document.getElementById("tablaJugadores");
+  tbody.innerHTML = "";
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#999;">Sin jugadores</td></tr>`;
+    return;
+  }
+  rows.forEach(j => {
+    const eq = equiposCache.find(e => e.id === j.equipo_id);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${j.nombre}</td>
+      <td>${eq ? eq.nombre : "-"}</td>
+      <td>${j.numero || "-"}</td>
+      <td>${j.cedula_asociado || "-"}</td>
+      <td>
+        <button class="btn small secondary" onclick="editarJugador(${j.id})">Editar</button>
+        <button class="btn small danger" onclick="eliminarJugador(${j.id})">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+let jugadorEditando = null;
+const modalJugador = document.getElementById("modalJugador");
+document.getElementById("newJugadorBtn").addEventListener("click", async () => {
+  await cargarEquipos();
+  jugadorEditando = null;
+  document.getElementById("jugadorModalTitle").textContent = "Nuevo jugador";
+  document.getElementById("jugadorForm").reset();
+  document.getElementById("jg-equipo").innerHTML = selectOptions(equiposCache, "id", "nombre", null);
+  modalJugador.classList.add("open");
+});
+document.getElementById("jugadorCancelBtn").addEventListener("click", () => modalJugador.classList.remove("open"));
+
+async function editarJugador(id){
+  await cargarEquipos();
+  await cargarJugadores();
+  const j = jugadoresCache.find(x => x.id === id);
+  if(!j) return;
+  jugadorEditando = id;
+  document.getElementById("jugadorModalTitle").textContent = `Editar: ${j.nombre}`;
+  document.getElementById("jg-equipo").innerHTML = selectOptions(equiposCache, "id", "nombre", null);
+  document.getElementById("jg-equipo").value = j.equipo_id;
+  document.getElementById("jg-equipo").disabled = true; // el equipo no se cambia aquí
+  document.getElementById("jg-nombre").value = j.nombre;
+  document.getElementById("jg-numero").value = j.numero || "";
+  document.getElementById("jg-cedula").value = j.cedula_asociado || "";
+  modalJugador.classList.add("open");
+}
+
+document.getElementById("jugadorForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const equipo_id = document.getElementById("jg-equipo").value;
+  const nombre = document.getElementById("jg-nombre").value.trim();
+  const numero = document.getElementById("jg-numero").value.trim();
+  const cedula_asociado = document.getElementById("jg-cedula").value.trim();
+  const esNuevo = jugadorEditando === null;
+  const url = esNuevo ? `${API_BASE}/api/admin/torneo/jugadores` : `${API_BASE}/api/admin/torneo/jugadores/${jugadorEditando}`;
+  const res = await fetch(url, {
+    method: esNuevo ? "POST" : "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ equipo_id, nombre, numero, cedula_asociado }),
+  });
+  const data = await res.json();
+  document.getElementById("jg-equipo").disabled = false;
+  if(!res.ok){ showMsg("jugadorModalMsg", data.error || "No se pudo guardar.", "error"); return; }
+  modalJugador.classList.remove("open");
+  showMsg("jugadoresMsg", esNuevo ? "Jugador creado." : "Cambios guardados.", "ok");
+  await cargarJugadores();
+  cargarTablaJugadores();
+});
+
+async function eliminarJugador(id){
+  if(!confirm("¿Eliminar este jugador? También se eliminan sus goles y tarjetas registrados.")) return;
+  const res = await fetch(`${API_BASE}/api/admin/torneo/jugadores/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if(res.ok){ showMsg("jugadoresMsg", "Jugador eliminado.", "ok"); cargarTablaJugadores(); }
+}
+
+/* =========================================================
+   PARTIDOS
+   ========================================================= */
+async function prepararFiltroPartidos(){
+  await cargarCategorias();
+  await cargarEquipos();
+  await cargarJugadores();
+  const sel = document.getElementById("partidosFiltroCategoria");
+  sel.innerHTML = selectOptions(categorias, "id", "nombre", "Todas las categorías");
+  sel.onchange = cargarTablaPartidos;
+}
+
+async function cargarTablaPartidos(){
+  const categoriaId = document.getElementById("partidosFiltroCategoria").value;
+  const url = categoriaId
+    ? `${API_BASE}/api/admin/torneo/partidos?categoria_id=${categoriaId}`
+    : `${API_BASE}/api/admin/torneo/partidos`;
+  const res = await fetch(url, { credentials: "same-origin" });
+  const rows = await res.json();
+  const tbody = document.getElementById("tablaPartidos");
+  tbody.innerHTML = "";
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">Sin partidos</td></tr>`;
+    return;
+  }
+  rows.forEach(p => {
+    const marcador = (p.goles_local !== null && p.goles_visitante !== null)
+      ? `${p.goles_local} - ${p.goles_visitante}` : "Sin jugar";
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${p.jornada || "-"}</td>
+      <td>${p.fecha || "-"}</td>
+      <td>${p.local_nombre}</td>
+      <td>${marcador}</td>
+      <td>${p.visitante_nombre}</td>
+      <td>
+        <button class="btn small secondary" onclick="editarPartido(${p.id})">Editar</button>
+        <button class="btn small danger" onclick="eliminarPartido(${p.id})">Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+let partidoEditando = null;
+const modalPartido = document.getElementById("modalPartido");
+
+function equiposDeCategoria(categoriaId){
+  return equiposCache.filter(e => String(e.categoria_id) === String(categoriaId));
+}
+function actualizarSelectsEquiposPartido(){
+  const categoriaId = document.getElementById("pt-categoria").value;
+  const equipos = equiposDeCategoria(categoriaId);
+  document.getElementById("pt-local").innerHTML = selectOptions(equipos, "id", "nombre", null);
+  document.getElementById("pt-visitante").innerHTML = selectOptions(equipos, "id", "nombre", null);
+}
+document.getElementById("pt-categoria").addEventListener("change", actualizarSelectsEquiposPartido);
+
+document.getElementById("newPartidoBtn").addEventListener("click", async () => {
+  await cargarCategorias();
+  await cargarEquipos();
+  partidoEditando = null;
+  document.getElementById("partidoModalTitle").textContent = "Nuevo partido";
+  document.getElementById("partidoForm").reset();
+  document.getElementById("pt-categoria").innerHTML = selectOptions(categorias, "id", "nombre", null);
+  actualizarSelectsEquiposPartido();
+  document.getElementById("golesSection").style.display = "none";
+  document.getElementById("tarjetasSection").style.display = "none";
+  modalPartido.classList.add("open");
+});
+document.getElementById("partidoCancelBtn").addEventListener("click", () => modalPartido.classList.remove("open"));
+
+async function editarPartido(id){
+  await cargarCategorias();
+  await cargarEquipos();
+  await cargarJugadores();
+  const res = await fetch(`${API_BASE}/api/admin/torneo/partidos?categoria_id=`, { credentials: "same-origin" });
+  const todos = await res.json();
+  const p = todos.find(x => x.id === id);
+  if(!p) return;
+  partidoEditando = id;
+  document.getElementById("partidoModalTitle").textContent = "Editar partido";
+  document.getElementById("pt-categoria").innerHTML = selectOptions(categorias, "id", "nombre", null);
+  document.getElementById("pt-categoria").value = p.categoria_id;
+  document.getElementById("pt-categoria").disabled = true; // la categoría no se cambia aquí
+  actualizarSelectsEquiposPartido();
+  document.getElementById("pt-local").value = p.equipo_local_id;
+  document.getElementById("pt-visitante").value = p.equipo_visitante_id;
+  document.getElementById("pt-jornada").value = p.jornada || "";
+  document.getElementById("pt-fecha").value = p.fecha || "";
+  document.getElementById("pt-goles-local").value = p.goles_local ?? "";
+  document.getElementById("pt-goles-visitante").value = p.goles_visitante ?? "";
+
+  document.getElementById("golesSection").style.display = "block";
+  document.getElementById("tarjetasSection").style.display = "block";
+  const jugadoresPartido = jugadoresCache.filter(j =>
+    String(j.equipo_id) === String(p.equipo_local_id) || String(j.equipo_id) === String(p.equipo_visitante_id));
+  document.getElementById("ng-jugador").innerHTML = selectOptions(jugadoresPartido, "id", "nombre", null);
+  document.getElementById("nt-jugador").innerHTML = selectOptions(jugadoresPartido, "id", "nombre", null);
+
+  await cargarGolesPartido(id);
+  await cargarTarjetasPartido(id);
+  modalPartido.classList.add("open");
+}
+
+document.getElementById("partidoForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const categoria_id = document.getElementById("pt-categoria").value;
+  const equipo_local_id = document.getElementById("pt-local").value;
+  const equipo_visitante_id = document.getElementById("pt-visitante").value;
+  const jornada = document.getElementById("pt-jornada").value.trim();
+  const fecha = document.getElementById("pt-fecha").value;
+  const golesLocalRaw = document.getElementById("pt-goles-local").value;
+  const golesVisitanteRaw = document.getElementById("pt-goles-visitante").value;
+
+  const payload = {
+    categoria_id, equipo_local_id, equipo_visitante_id, jornada, fecha,
+    goles_local: golesLocalRaw === "" ? null : Number(golesLocalRaw),
+    goles_visitante: golesVisitanteRaw === "" ? null : Number(golesVisitanteRaw),
+  };
+
+  const esNuevo = partidoEditando === null;
+  const url = esNuevo ? `${API_BASE}/api/admin/torneo/partidos` : `${API_BASE}/api/admin/torneo/partidos/${partidoEditando}`;
+  const res = await fetch(url, {
+    method: esNuevo ? "POST" : "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  document.getElementById("pt-categoria").disabled = false;
+  if(!res.ok){ showMsg("partidoModalMsg", data.error || "No se pudo guardar.", "error"); return; }
+
+  showMsg("partidosMsg", esNuevo ? "Partido creado. Ábrelo de nuevo para registrar goleadores y tarjetas." : "Cambios guardados.", "ok");
+  modalPartido.classList.remove("open");
+  cargarTablaPartidos();
+});
+
+async function cargarGolesPartido(partidoId){
+  const res = await fetch(`${API_BASE}/api/admin/torneo/partidos/${partidoId}/goles`, { credentials: "same-origin" });
+  const goles = await res.json();
+  const list = document.getElementById("golesList");
+  list.innerHTML = "";
+  if(goles.length === 0){
+    list.innerHTML = `<div style="font-size:12px;color:#777;margin-bottom:6px;">Sin goles registrados.</div>`;
+  }
+  goles.forEach(g => {
+    const row = document.createElement("div");
+    row.className = "sub-row";
+    row.innerHTML = `
+      <span><strong>${g.jugador_nombre}</strong> — ${g.cantidad} gol(es)</span>
+      <button type="button" class="btn small danger" onclick="eliminarGol(${g.id}, ${partidoId})">Eliminar</button>
+    `;
+    list.appendChild(row);
+  });
+}
+document.getElementById("addGolBtn").addEventListener("click", async () => {
+  if(!partidoEditando){ showMsg("partidoModalMsg", "Primero guarda el partido.", "error"); return; }
+  const jugador_id = document.getElementById("ng-jugador").value;
+  const cantidad = Number(document.getElementById("ng-cantidad").value) || 1;
+  if(!jugador_id){ showMsg("partidoModalMsg", "Selecciona un jugador.", "error"); return; }
+  const res = await fetch(`${API_BASE}/api/admin/torneo/partidos/${partidoEditando}/goles`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+    body: JSON.stringify({ jugador_id, cantidad }),
+  });
+  if(res.ok){ document.getElementById("ng-cantidad").value = 1; cargarGolesPartido(partidoEditando); }
+});
+async function eliminarGol(id, partidoId){
+  const res = await fetch(`${API_BASE}/api/admin/torneo/goles/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if(res.ok) cargarGolesPartido(partidoId);
+}
+
+async function cargarTarjetasPartido(partidoId){
+  const res = await fetch(`${API_BASE}/api/admin/torneo/partidos/${partidoId}/tarjetas`, { credentials: "same-origin" });
+  const tarjetas = await res.json();
+  const list = document.getElementById("tarjetasList");
+  list.innerHTML = "";
+  if(tarjetas.length === 0){
+    list.innerHTML = `<div style="font-size:12px;color:#777;margin-bottom:6px;">Sin tarjetas registradas.</div>`;
+  }
+  tarjetas.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "sub-row";
+    row.innerHTML = `
+      <span><strong>${t.jugador_nombre}</strong> — ${t.tipo === "AMARILLA" ? "Amarilla" : "Roja"}</span>
+      <button type="button" class="btn small danger" onclick="eliminarTarjeta(${t.id}, ${partidoId})">Eliminar</button>
+    `;
+    list.appendChild(row);
+  });
+}
+document.getElementById("addTarjetaBtn").addEventListener("click", async () => {
+  if(!partidoEditando){ showMsg("partidoModalMsg", "Primero guarda el partido.", "error"); return; }
+  const jugador_id = document.getElementById("nt-jugador").value;
+  const tipo = document.getElementById("nt-tipo").value;
+  if(!jugador_id){ showMsg("partidoModalMsg", "Selecciona un jugador.", "error"); return; }
+  const res = await fetch(`${API_BASE}/api/admin/torneo/partidos/${partidoEditando}/tarjetas`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+    body: JSON.stringify({ jugador_id, tipo }),
+  });
+  if(res.ok) cargarTarjetasPartido(partidoEditando);
+});
+async function eliminarTarjeta(id, partidoId){
+  const res = await fetch(`${API_BASE}/api/admin/torneo/tarjetas/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if(res.ok) cargarTarjetasPartido(partidoId);
+}
+
+async function eliminarPartido(id){
+  if(!confirm("¿Eliminar este partido? También se eliminan sus goles y tarjetas registrados.")) return;
+  const res = await fetch(`${API_BASE}/api/admin/torneo/partidos/${id}`, { method: "DELETE", credentials: "same-origin" });
+  if(res.ok){ showMsg("partidosMsg", "Partido eliminado.", "ok"); cargarTablaPartidos(); }
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+(async function init(){
+  await cargarSesion();
+  await cargarCategorias();
+  cargarTablaCategorias();
+})();
+</script>
+</body>
+</html>
