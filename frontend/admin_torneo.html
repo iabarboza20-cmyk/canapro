@@ -123,6 +123,7 @@
     <div id="userInfo"></div>
     <div class="actions">
       <a href="/torneo">Ver torneo</a>
+      <a href="/torneo/nomina">Ver nómina</a>
       <a href="/">Inicio</a>
       <a href="/consulta">Ir al buscador</a>
       <button class="logout" id="logoutBtn">Salir</button>
@@ -178,7 +179,7 @@
         <button class="btn" id="newJugadorBtn">+ Nuevo jugador</button>
       </div>
       <table>
-        <thead><tr><th>Jugador</th><th>Equipo</th><th>Número</th><th>Cédula asociado</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Foto</th><th>Jugador</th><th>Equipo</th><th>Número</th><th>Posición</th><th>Cédula asociado</th><th>Acciones</th></tr></thead>
         <tbody id="tablaJugadores"></tbody>
       </table>
     </div>
@@ -258,7 +259,28 @@
         <div><label>Equipo</label><select id="jg-equipo" required></select></div>
         <div><label>Nombre del jugador</label><input type="text" id="jg-nombre" required></div>
         <div><label>Número de camiseta (opcional)</label><input type="text" id="jg-numero"></div>
+        <div>
+          <label>Posición (opcional)</label>
+          <select id="jg-posicion">
+            <option value="">— Sin especificar —</option>
+            <option value="Portero">Portero</option>
+            <option value="Defensa">Defensa</option>
+            <option value="Mediocampista">Mediocampista</option>
+            <option value="Delantero">Delantero</option>
+          </select>
+        </div>
         <div><label>Cédula de asociado (opcional, si es socio de CANAPROSUCRE)</label><input type="text" id="jg-cedula"></div>
+      </div>
+      <div class="sub-section" id="jugadorFotoSection" style="display:none;">
+        <h3>Foto (se muestra en la nómina pública)</h3>
+        <div style="display:flex; align-items:center; gap:14px; margin-bottom:10px;">
+          <img id="jugador-foto-preview" src="" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--verde-oscuro);background:#f2f2f2;display:none;">
+          <div style="flex:1;">
+            <input type="file" id="jugador-foto-input" accept=".jpg,.jpeg,.png,.webp">
+            <div style="font-size:11px;color:#777;margin-top:4px;">JPG, PNG o WEBP, máximo 5MB.</div>
+          </div>
+          <button type="button" class="btn small secondary" id="jugadorFotoUploadBtn">Subir</button>
+        </div>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn secondary" id="jugadorCancelBtn">Cancelar</button>
@@ -614,16 +636,18 @@ async function cargarTablaJugadores(){
   const tbody = document.getElementById("tablaJugadores");
   tbody.innerHTML = "";
   if(rows.length === 0){
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#999;">Sin jugadores</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#999;">Sin jugadores</td></tr>`;
     return;
   }
   rows.forEach(j => {
     const eq = equiposCache.find(e => e.id === j.equipo_id);
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td>${j.foto_url ? `<img class="escudo-thumb" src="${j.foto_url}" style="border-radius:50%;object-fit:cover;">` : ""}</td>
       <td>${j.nombre}</td>
       <td>${eq ? eq.nombre : "-"}</td>
       <td>${j.numero || "-"}</td>
+      <td>${j.posicion || "-"}</td>
       <td>${j.cedula_asociado || "-"}</td>
       <td>
         <button class="btn small secondary" onclick="editarJugador(${j.id})">Editar</button>
@@ -642,6 +666,7 @@ document.getElementById("newJugadorBtn").addEventListener("click", async () => {
   document.getElementById("jugadorModalTitle").textContent = "Nuevo jugador";
   document.getElementById("jugadorForm").reset();
   document.getElementById("jg-equipo").innerHTML = selectOptions(equiposCache, "id", "nombre", null);
+  document.getElementById("jugadorFotoSection").style.display = "none";
   modalJugador.classList.add("open");
 });
 document.getElementById("jugadorCancelBtn").addEventListener("click", () => modalJugador.classList.remove("open"));
@@ -658,7 +683,13 @@ async function editarJugador(id){
   document.getElementById("jg-equipo").disabled = true; // el equipo no se cambia aquí
   document.getElementById("jg-nombre").value = j.nombre;
   document.getElementById("jg-numero").value = j.numero || "";
+  document.getElementById("jg-posicion").value = j.posicion || "";
   document.getElementById("jg-cedula").value = j.cedula_asociado || "";
+  document.getElementById("jugadorFotoSection").style.display = "block";
+  const preview = document.getElementById("jugador-foto-preview");
+  document.getElementById("jugador-foto-input").value = "";
+  if(j.foto_url){ preview.src = j.foto_url; preview.style.display = "block"; }
+  else { preview.style.display = "none"; }
   modalJugador.classList.add("open");
 }
 
@@ -667,6 +698,7 @@ document.getElementById("jugadorForm").addEventListener("submit", async (e) => {
   const equipo_id = document.getElementById("jg-equipo").value;
   const nombre = document.getElementById("jg-nombre").value.trim();
   const numero = document.getElementById("jg-numero").value.trim();
+  const posicion = document.getElementById("jg-posicion").value;
   const cedula_asociado = document.getElementById("jg-cedula").value.trim();
   const esNuevo = jugadorEditando === null;
   const url = esNuevo ? `${API_BASE}/api/admin/torneo/jugadores` : `${API_BASE}/api/admin/torneo/jugadores/${jugadorEditando}`;
@@ -674,14 +706,33 @@ document.getElementById("jugadorForm").addEventListener("submit", async (e) => {
     method: esNuevo ? "POST" : "PUT",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
-    body: JSON.stringify({ equipo_id, nombre, numero, cedula_asociado }),
+    body: JSON.stringify({ equipo_id, nombre, numero, posicion, cedula_asociado }),
   });
   const data = await res.json();
   document.getElementById("jg-equipo").disabled = false;
   if(!res.ok){ showMsg("jugadorModalMsg", data.error || "No se pudo guardar.", "error"); return; }
+  const esCreacion = esNuevo;
   modalJugador.classList.remove("open");
-  showMsg("jugadoresMsg", esNuevo ? "Jugador creado." : "Cambios guardados.", "ok");
+  showMsg("jugadoresMsg", esCreacion ? "Jugador creado. Ábrelo de nuevo para subir su foto." : "Cambios guardados.", "ok");
   await cargarJugadores();
+  cargarTablaJugadores();
+});
+
+document.getElementById("jugadorFotoUploadBtn").addEventListener("click", async () => {
+  if(!jugadorEditando){ showMsg("jugadorModalMsg", "Primero guarda el jugador antes de subir la foto.", "error"); return; }
+  const input = document.getElementById("jugador-foto-input");
+  if(!input.files || input.files.length === 0){ showMsg("jugadorModalMsg", "Selecciona una imagen primero.", "error"); return; }
+  const formData = new FormData();
+  formData.append("foto", input.files[0]);
+  const res = await fetch(`${API_BASE}/api/admin/torneo/jugadores/${jugadorEditando}/foto`, {
+    method: "POST", credentials: "same-origin", body: formData,
+  });
+  const data = await res.json();
+  if(!res.ok){ showMsg("jugadorModalMsg", data.error || "No se pudo subir la foto.", "error"); return; }
+  const preview = document.getElementById("jugador-foto-preview");
+  preview.src = data.foto_url + "?t=" + Date.now();
+  preview.style.display = "block";
+  showMsg("jugadorModalMsg", "Foto actualizada.", "ok");
   cargarTablaJugadores();
 });
 
