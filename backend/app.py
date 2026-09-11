@@ -47,7 +47,7 @@ def admin_required(f):
         if session.get("rol") != "admin":
             if request.path.startswith("/api/"):
                 return jsonify({"error": "No tienes permisos de administrador"}), 403
-            return redirect("/")
+            return redirect("/consulta")
         return f(*args, **kwargs)
     return wrapper
 
@@ -95,9 +95,25 @@ def login_page():
 
 
 @app.route("/")
-@login_required
 def index():
+    # Landing pública institucional: no requiere sesión. Muestra tarjetas de
+    # acceso a los distintos servicios (consulta de asociados, torneo,
+    # simulador de créditos); cada una exige login si corresponde.
     return send_from_directory(FRONTEND_DIR, "index.html")
+
+
+@app.route("/consulta")
+@login_required
+def consulta_page():
+    # Buscador de asociados (antes servido en "/"). Requiere sesión iniciada.
+    return send_from_directory(FRONTEND_DIR, "consulta.html")
+
+
+@app.route("/simulador-creditos")
+def simulador_creditos_page():
+    # Calculadora de cuotas de ejemplo, pública (no expone datos de
+    # asociados ni políticas reales de crédito de la cooperativa).
+    return send_from_directory(FRONTEND_DIR, "simulador_creditos.html")
 
 
 @app.route("/admin")
